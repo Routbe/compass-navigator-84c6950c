@@ -8,7 +8,7 @@ import Page from "@/pages/ShortLink";
  * eigenaar, zodat niemand een handle of systeemroute kan kapen. De slug in de
  * databank is exact dit pad zonder leading slash (`jdelplanche/apple`).
  */
-export const Route = createFileRoute("/$username/$slug")({
+export const Route = createFileRoute("/$username_/$slug")({
   server: {
     handlers: {
       GET: async ({ request, params, next }) => {

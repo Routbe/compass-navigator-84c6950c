@@ -2,17 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import Donate from "@/pages/TipPage";
 import { canonicalLinks, donateJsonLd } from "@/lib/social-meta";
 
-/** Fooi-variant op de schone wortel-URL: rout.be/<handle>/tip */
-export const Route = createFileRoute("/$username/tip")({
+/** Schone wortel-URL voor geverifieerde leden: rout.be/<naam>/donate */
+export const Route = createFileRoute("/$username_/donate")({
   validateSearch: (search: Record<string, unknown>) => ({
     donation: typeof search["donation"] === "string" ? (search["donation"] as string) : undefined,
     status: typeof search["status"] === "string" ? (search["status"] as string) : undefined,
   }),
   head: ({ params }) => {
     const handle = (params.username ?? "").replace(/^@/, "");
-    const title = `Geef een fooi aan @${handle} — ROUT`;
-    const description = `Steun @${handle} met een fooi: kies een bedrag en scan de betaal-QR met je bank-app.`;
-    const path = `/${handle}/tip`;
+    const title = `Steun @${handle} — ROUT`;
+    const description = `Geef @${handle} rechtstreekse steun via ROUT: kies een bedrag en scan de betaal-QR met je eigen bank-app.`;
+    const path = `/${handle}/donate`;
     return {
       links: canonicalLinks(path),
       scripts: donateJsonLd({ handle, url: `https://rout.be${path}` }),

@@ -1,19 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Donate from "@/pages/TipPage";
 import { canonicalLinks, donateJsonLd } from "@/lib/social-meta";
-import { sanitizeHandleInput } from "@/lib/validations/sanitizeHandle";
 
-/** Fooi-variant van de steunpagina: `rout.be/u/[alias]/tip`. */
-export const Route = createFileRoute("/u/$username/tip")({
+/** Fooi-variant op de schone wortel-URL: rout.be/<handle>/tip */
+export const Route = createFileRoute("/$username_/tip")({
   validateSearch: (search: Record<string, unknown>) => ({
     donation: typeof search["donation"] === "string" ? (search["donation"] as string) : undefined,
     status: typeof search["status"] === "string" ? (search["status"] as string) : undefined,
   }),
   head: ({ params }) => {
-    const handle = sanitizeHandleInput(params.username);
+    const handle = (params.username ?? "").replace(/^@/, "");
     const title = `Geef een fooi aan @${handle} — ROUT`;
     const description = `Steun @${handle} met een fooi: kies een bedrag en scan de betaal-QR met je bank-app.`;
-    const path = `/u/${handle}/tip`;
+    const path = `/${handle}/tip`;
     return {
       links: canonicalLinks(path),
       scripts: donateJsonLd({ handle, url: `https://rout.be${path}` }),

@@ -185,7 +185,7 @@ function NumberField({ label, value, onChange, min, max, step }: { label: string
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <Input type="number" inputMode="numeric" min={min} max={max} step={step ?? 1} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <Input aria-label={label} type="number" inputMode="numeric" min={min} max={max} step={step ?? 1} value={value} onChange={(e) => onChange(Number(e.target.value))} />
     </div>
   );
 }
@@ -280,17 +280,17 @@ function EventTypeForm({ data, draft, setDraft, onDone }: { data: Studio; draft:
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("booking.type.name")}</Label>
-          <Input value={draft.title} maxLength={120} onChange={(e) => setDraft({ ...draft, title: e.target.value, slug: draft.id ? draft.slug : slugify(e.target.value) })} />
+          <Input aria-label={t("booking.type.name")} value={draft.title} maxLength={120} onChange={(e) => setDraft({ ...draft, title: e.target.value, slug: draft.id ? draft.slug : slugify(e.target.value) })} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("booking.type.slug")}</Label>
-          <Input value={draft.slug} maxLength={63} onChange={(e) => set("slug", slugify(e.target.value))} />
+          <Input aria-label={t("booking.type.slug")} value={draft.slug} maxLength={63} onChange={(e) => set("slug", slugify(e.target.value))} />
         </div>
         {data.workspaceId && !draft.id && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{t("booking.type.owner")}</Label>
             <Select value={draft.workspace ? "ws" : "me"} onValueChange={(v) => setDraft({ ...draft, workspace: v === "ws", hostUserIds: [data.userId], routingStrategy: "STRICT" })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={t("booking.type.owner")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="me">{t("booking.type.owner.personal")}</SelectItem>
                 <SelectItem value="ws">{t("booking.type.owner.workspace")}</SelectItem>
@@ -305,12 +305,12 @@ function EventTypeForm({ data, draft, setDraft, onDone }: { data: Studio; draft:
         <NumberField label={t("booking.type.horizon")} value={draft.maxDaysAhead} min={1} max={365} onChange={(n) => set("maxDaysAhead", n)} />
         <div className="space-y-1.5">
           <Label>{t("booking.type.price")}</Label>
-          <Input inputMode="decimal" placeholder="0,00" value={draft.price} onChange={(e) => set("price", e.target.value)} />
+          <Input aria-label={t("booking.type.price")} inputMode="decimal" placeholder="0,00" value={draft.price} onChange={(e) => set("price", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>{t("booking.type.mode")}</Label>
           <Select value={draft.confirmationMode} onValueChange={(v) => set("confirmationMode", v as Draft["confirmationMode"])}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label={t("booking.type.mode")}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="instant">{t("booking.type.mode.instant")}</SelectItem>
               <SelectItem value="request">{t("booking.type.mode.request")}</SelectItem>
@@ -320,7 +320,7 @@ function EventTypeForm({ data, draft, setDraft, onDone }: { data: Studio; draft:
         <div className="space-y-1.5">
           <Label>{t("booking.type.location")}</Label>
           <Select value={draft.locationKind} onValueChange={(v) => set("locationKind", v as Draft["locationKind"])}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label={t("booking.type.location")}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="video">{t("booking.type.location.video")}</SelectItem>
               <SelectItem value="address">{t("booking.type.location.address")}</SelectItem>
@@ -330,14 +330,14 @@ function EventTypeForm({ data, draft, setDraft, onDone }: { data: Studio; draft:
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("booking.type.locationValue")}</Label>
-          <Input value={draft.locationValue} maxLength={500} onChange={(e) => set("locationValue", e.target.value)} />
+          <Input aria-label={t("booking.type.locationValue")} value={draft.locationValue} maxLength={500} onChange={(e) => set("locationValue", e.target.value)} />
         </div>
         {draft.workspace && data.workspaceId && (
           <>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>{t("booking.type.routing")}</Label>
               <Select value={draft.routingStrategy} onValueChange={(v) => setDraft({ ...draft, routingStrategy: v as Draft["routingStrategy"], hostUserIds: v === "STRICT" ? draft.hostUserIds.slice(0, 1) : draft.hostUserIds })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={t("booking.type.routing")}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(["STRICT", "ROUND_ROBIN", "COLLECTIVE"] as const).map((r) => <SelectItem key={r} value={r}>{t(`booking.type.routing.${r}`)}</SelectItem>)}
                 </SelectContent>
@@ -409,15 +409,15 @@ function IntakeEditor({ fields, onChange }: { fields: IntakeField[]; onChange: (
       {fields.map((f, i) => (
         <div key={f.id} className="space-y-2 rounded-lg border border-border bg-background p-3">
           <div className="flex flex-wrap gap-2">
-            <Input className="min-w-0 flex-1" placeholder="Vraag (bv. Allergieën of klachten)" maxLength={120} value={f.label} onChange={(e) => upd(i, { label: e.target.value })} />
+            <Input aria-label={`Vraag ${i + 1}`} className="min-w-0 flex-1" placeholder="Vraag (bv. Allergieën of klachten)" maxLength={120} value={f.label} onChange={(e) => upd(i, { label: e.target.value })} />
             <Select value={f.type} onValueChange={(v) => upd(i, { type: v as IntakeField["type"] })}>
-              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={`Soort antwoord vraag ${i + 1}`} className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>{FIELD_TYPES.map((x) => <SelectItem key={x.v} value={x.v}>{x.l}</SelectItem>)}</SelectContent>
             </Select>
             <Button size="sm" variant="ghost" aria-label="Vraag verwijderen" onClick={() => onChange(fields.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
           </div>
           {f.type === "select" && (
-            <Input placeholder="Opties, gescheiden door komma's" value={f.options.join(", ")}
+            <Input aria-label={`Opties vraag ${i + 1}`} placeholder="Opties, gescheiden door komma's" value={f.options.join(", ")}
               onChange={(e) => upd(i, { options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean).slice(0, 20) })} />
           )}
           <div className="flex flex-wrap gap-4 text-sm">
@@ -462,18 +462,18 @@ function Availability({ data }: { data: Studio }) {
       <p className="mb-4 text-sm text-muted-foreground">{t("booking.avail.intro")}</p>
       <div className="mb-4 max-w-sm space-y-1.5">
         <Label>{t("booking.avail.timezone")}</Label>
-        <Input value={tz} onChange={(e) => setTz(e.target.value)} />
+        <Input aria-label={t("booking.avail.timezone")} value={tz} onChange={(e) => setTz(e.target.value)} />
       </div>
       <div className="space-y-2">
         {days.map((d, i) => (
           <div key={d.wd} className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background px-3 py-2">
-            <Switch checked={d.on} onCheckedChange={(v) => setDays(days.map((x, j) => (j === i ? { ...x, on: v } : x)))} />
+            <Switch aria-label={dayName(d.wd)} checked={d.on} onCheckedChange={(v) => setDays(days.map((x, j) => (j === i ? { ...x, on: v } : x)))} />
             <span className="w-28 text-sm font-medium capitalize">{dayName(d.wd)}</span>
             {d.on ? (
               <div className="flex items-center gap-2">
-                <Input type="time" step={900} className="w-28" value={toHm(d.start)} onChange={(e) => setDays(days.map((x, j) => (j === i ? { ...x, start: fromHm(e.target.value) } : x)))} />
+                <Input aria-label={`${dayName(d.wd)} vanaf`} type="time" step={900} className="w-28" value={toHm(d.start)} onChange={(e) => setDays(days.map((x, j) => (j === i ? { ...x, start: fromHm(e.target.value) } : x)))} />
                 <span className="text-muted-foreground">–</span>
-                <Input type="time" step={900} className="w-28" value={toHm(d.end === 1440 ? 1439 : d.end)} onChange={(e) => setDays(days.map((x, j) => (j === i ? { ...x, end: fromHm(e.target.value) } : x)))} />
+                <Input aria-label={`${dayName(d.wd)} tot`} type="time" step={900} className="w-28" value={toHm(d.end === 1440 ? 1439 : d.end)} onChange={(e) => setDays(days.map((x, j) => (j === i ? { ...x, end: fromHm(e.target.value) } : x)))} />
               </div>
             ) : (
               <span className="text-sm text-muted-foreground">{t("booking.avail.closed")}</span>
@@ -528,17 +528,17 @@ function Exceptions({ data, tz }: { data: Studio; tz: string }) {
         <div className="space-y-1.5">
           <Label>Soort</Label>
           <Select value={f.kind} onValueChange={(v) => setF({ ...f, kind: v as "busy" | "free" })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Soort uitzondering"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="busy">Gesloten / afwezig</SelectItem><SelectItem value="free">Extra beschikbaar</SelectItem></SelectContent>
           </Select>
         </div>
         <label className="flex items-center gap-2 self-end text-sm"><Switch checked={f.allDay} onCheckedChange={(v) => setF({ ...f, allDay: v })} />Hele dag(en)</label>
-        <div className="space-y-1.5"><Label>Van</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div>
-        <div className="space-y-1.5"><Label>Tot en met</Label><Input type="date" value={f.to} min={f.from} onChange={(e) => setF({ ...f, to: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label>Van</Label><Input aria-label="Van" type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label>Tot en met</Label><Input aria-label="Tot en met" type="date" value={f.to} min={f.from} onChange={(e) => setF({ ...f, to: e.target.value })} /></div>
         {!f.allDay && (
           <>
-            <div className="space-y-1.5"><Label>Vanaf</Label><Input type="time" step={900} value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label>Tot</Label><Input type="time" step={900} value={f.end} onChange={(e) => setF({ ...f, end: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Vanaf</Label><Input aria-label="Vanaf" type="time" step={900} value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Tot</Label><Input aria-label="Tot" type="time" step={900} value={f.end} onChange={(e) => setF({ ...f, end: e.target.value })} /></div>
           </>
         )}
       </div>

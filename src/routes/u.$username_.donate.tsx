@@ -3,7 +3,7 @@ import Donate from "@/pages/TipPage";
 import { canonicalLinks, donateJsonLd } from "@/lib/social-meta";
 import { sanitizeHandleInput } from "@/lib/validations/sanitizeHandle";
 
-export const Route = createFileRoute("/u/$username/donate")({
+export const Route = createFileRoute("/u/$username_/donate")({
   validateSearch: (search: Record<string, unknown>) => ({
     donation: typeof search["donation"] === "string" ? (search["donation"] as string) : undefined,
     status: typeof search["status"] === "string" ? (search["status"] as string) : undefined,

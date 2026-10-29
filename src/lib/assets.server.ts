@@ -75,19 +75,23 @@ export async function listAssets(userId: string) {
   };
 }
 
+/** Shown in the upload toast when the active scope (e.g. a free workspace) has no storage left. */
+export const STORAGE_QUOTA_MESSAGE = "Opslaglimiet bereikt voor deze omgeving (Storage Quota Exceeded). Upgrade de workspace of upload in je persoonlijke omgeving.";
+
 export async function uploadAsset(input: { userId: string; bytes: Uint8Array; fileName: string; days?: number }) {
   await ensure();
-  if (!storageConfigured("client")) throw new Error("Opslag is nog niet ingesteld.");
   if (input.bytes.byteLength === 0) throw new Error("Het bestand is leeg.");
+  // Scope quota first: a 0 MB scope is refused with the same answer whether or not storage is configured.
+  const { checkActiveScopeUpload } = await import("./entitlement-engine.server");
+  const scopeQuota = await checkActiveScopeUpload(input.userId, input.bytes.byteLength);
+  if (!scopeQuota.ok) throw new Error(STORAGE_QUOTA_MESSAGE);
+  if (!storageConfigured("client")) throw new Error("Opslag is nog niet ingesteld.");
   if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("Maximaal 5 MB per bestand.");
   const type = sniffType(input.bytes);
   if (!type || !(SHARE_TYPES as readonly string[]).includes(type)) throw new Error("Enkel JPG, PNG, WebP, GIF, PDF of MP3.");
   if (!withinQuota(await usage(input.userId), input.bytes.byteLength)) {
     throw new Error("Opslaglimiet bereikt (50 bestanden of 500 MB).");
   }
-  const { checkActiveScopeUpload } = await import("./entitlement-engine.server");
-  const scopeQuota = await checkActiveScopeUpload(input.userId, input.bytes.byteLength);
-  if (!scopeQuota.ok) throw new Error("Storage Quota Exceeded");
   const { isLifetime, expiresAt } = retentionFor(await tierOf(input.userId), input.days);
   const key = `users/${input.userId}/assets/${crypto.randomUUID()}.${extFor(type)}`;
   await putObject("client", key, input.bytes, { contentType: type, cacheControl: "private, max-age=0" });

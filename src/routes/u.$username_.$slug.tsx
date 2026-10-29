@@ -8,7 +8,7 @@ import { sanitizeHandleInput } from "@/lib/validations/sanitizeHandle";
  * Zelfde principe als de geverifieerde variant: de slug in de databank is het
  * volledige pad zonder leading slash (`u/jona/apple`).
  */
-export const Route = createFileRoute("/u/$username/$slug")({
+export const Route = createFileRoute("/u/$username_/$slug")({
   server: {
     handlers: {
       GET: async ({ request, params, next }) => {

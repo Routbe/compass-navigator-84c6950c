@@ -4,7 +4,7 @@ import { getNextBookingSlots } from "@/lib/booking-engine/booking.functions";
 import { validBookingStart } from "@/lib/booking-engine/selection";
 import BookPublic from "@/pages/BookPublic";
 
-export const Route = createFileRoute("/$username/booking")({
+export const Route = createFileRoute("/$username_/booking")({
   validateSearch: (search: Record<string, unknown>) => ({
     event: z.string().uuid().safeParse(search.event).data,
     start: validBookingStart(search.start),
