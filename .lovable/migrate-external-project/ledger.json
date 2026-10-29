@@ -2,16 +2,82 @@
   "source": "github:Routbe/compass-navigator-b64ec481",
   "decision": "User chose 1:1 copy: keep Neon database and Better Auth (no move to Lovable Cloud).",
   "capabilities": [
-    {"capability": "code", "source": "TanStack Start app (same template)", "outcome": "copy", "status": "in_progress", "next_action": "copy source, install packages, build"},
-    {"capability": "schema", "source": "Neon Postgres (db/*.sql)", "outcome": "keep", "status": "pending", "next_action": "link Neon connector to this project"},
-    {"capability": "records", "source": "Neon Postgres", "outcome": "keep (same database)", "status": "pending", "next_action": "link Neon connector"},
-    {"capability": "auth", "source": "Better Auth + passkeys + 2FA + OIDC provider", "outcome": "keep", "status": "pending", "next_action": "needs BETTER_AUTH secret + provider keys as project secrets"},
-    {"capability": "storage", "source": "Scaleway/Infomaniak S3", "outcome": "keep", "status": "pending", "next_action": "storage keys as secrets"},
-    {"capability": "email", "source": "Brevo", "outcome": "keep", "status": "pending", "next_action": "Brevo key as secret"},
-    {"capability": "payments", "source": "Stripe + Wise webhook", "outcome": "keep", "status": "pending", "next_action": "Stripe/Wise keys; update webhook URLs at cutover"},
-    {"capability": "ai", "source": "Lovable AI / OpenAI SDK", "outcome": "keep", "status": "pending", "next_action": "verify"},
-    {"capability": "public_endpoints", "source": "src/routes/api/*", "outcome": "keep", "status": "pending", "next_action": "verify after build"},
-    {"capability": "secrets", "source": "ENVIRONMENT.md", "outcome": "keep", "status": "pending", "next_action": "user adds values via secure form"},
-    {"capability": "cutover", "source": "rout.be on Vercel", "outcome": "unchanged", "status": "pending", "next_action": "user decides if/when to point domain here"}
+    {
+      "capability": "code",
+      "source": "TanStack Start app (same template)",
+      "outcome": "copy",
+      "status": "verified",
+      "next_action": "none (typecheck + 801 tests pass, home page renders)"
+    },
+    {
+      "capability": "schema",
+      "source": "Neon Postgres (db/*.sql)",
+      "outcome": "keep",
+      "status": "verified",
+      "next_action": "Neon linked; health check queries DB (143 tables)"
+    },
+    {
+      "capability": "records",
+      "source": "Neon Postgres",
+      "outcome": "keep (same database)",
+      "status": "verified",
+      "next_action": "Neon linked; health check queries DB (143 tables)"
+    },
+    {
+      "capability": "auth",
+      "source": "Better Auth + passkeys + 2FA + OIDC provider",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "sign-in not tested; BETTER_AUTH_SECRET and provider keys not yet set in this project"
+    },
+    {
+      "capability": "storage",
+      "source": "Scaleway/Infomaniak S3",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "storage keys as secrets"
+    },
+    {
+      "capability": "email",
+      "source": "Brevo",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "Brevo key as secret"
+    },
+    {
+      "capability": "payments",
+      "source": "Stripe + Wise webhook",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "Stripe/Wise keys; update webhook URLs at cutover"
+    },
+    {
+      "capability": "ai",
+      "source": "Lovable AI / OpenAI SDK",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "verify"
+    },
+    {
+      "capability": "public_endpoints",
+      "source": "src/routes/api/*",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "verify after build"
+    },
+    {
+      "capability": "secrets",
+      "source": "ENVIRONMENT.md",
+      "outcome": "keep",
+      "status": "pending",
+      "next_action": "user adds values via secure form"
+    },
+    {
+      "capability": "cutover",
+      "source": "rout.be on Vercel",
+      "outcome": "unchanged",
+      "status": "pending",
+      "next_action": "user decides if/when to point domain here"
+    }
   ]
 }
