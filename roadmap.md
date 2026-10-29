@@ -25,7 +25,9 @@
 
 ## Import-ronde (okt 2026)
 - [x] Project geïmporteerd, Neon gekoppeld, 801 tests groen
-- [ ] Testaccount test_preview@rout.be seeden en inloggen in preview
-- [ ] Ingelogde controles: workspace-switch, Pagina-Wisselaar 3 tabs, 0 MB-upload melding
-- [ ] Publieke boekingspagina: intakevragen + gekozen tijd uit widget end-to-end
-- [ ] RLS-audit draaien en resultaat rapporteren
+- [x] Testaccount test_preview@rout.be (bestond al; wachtwoord vernieuwd met --rotate) en ingelogd in preview
+- [x] Ingelogde controles: workspace-switch, Pagina-Wisselaar 3 tabs, 0 MB-upload melding
+- [x] Publieke boekingspagina: intakevragen + gekozen tijd uit widget end-to-end (subpagina-routes hersteld)
+- [x] RLS-audit gedraaid: 79 tabellen RLS aan, 77 zonder policies, rout_app omzeilt RLS (beslissing gebruiker nodig)
+- [ ] Bestanden en media toont in workspace nog persoonlijk quotum (0/500 MB)
+- [ ] Links/statistieken/instellingen per scope (Studio toont persoonlijk profiel in workspace)
