@@ -21,7 +21,20 @@ async function query(body: object) {
 }
 const email = "test_preview@rout.be";
 const existing = await query({ query: 'select id from neon_auth."user" where lower(email) = $1 limit 1', params: [email] });
-if (existing.rows.length) throw new Error("Preview fixture already exists; refusing to reset its credentials.");
+if (existing.rows.length) {
+  // --rotate: issue fresh disposable credentials, but only for the row this script marked as fixture.
+  if (!process.argv.includes("--rotate")) throw new Error("Preview fixture already exists; pass --rotate to issue new disposable credentials.");
+  const fixtureId = String(existing.rows[0].id);
+  const marked = await query({ query: "select 1 from public.users where id = $1::uuid and user_metadata ->> 'preview_fixture' = 'true'", params: [fixtureId] });
+  if (!marked.rows.length) throw new Error("Account with the fixture email is not marked as preview fixture; refusing to touch it.");
+  const fresh = randomBytes(32).toString("base64url");
+  const updated = await query({ query: `update neon_auth.account set password = $1, "updatedAt" = now() where "userId" = $2::uuid and "providerId" = 'credential'`, params: [await hashPassword(fresh), fixtureId] });
+  if (updated.rowCount !== 1) throw new Error("Preview fixture has no single password login; nothing changed.");
+  mkdirSync("/tmp/browser/booking", { recursive: true, mode: 0o700 });
+  writeFileSync("/tmp/browser/booking/credentials.json", JSON.stringify({ email, password: fresh, userId: fixtureId }), { mode: 0o600 });
+  console.log("Preview fixture credentials rotated; saved privately for browser checks.");
+  process.exit(0);
+}
 const id = randomUUID();
 const password = randomBytes(32).toString("base64url");
 const passwordHash = await hashPassword(password);
