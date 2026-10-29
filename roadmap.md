@@ -22,3 +22,10 @@
 - [ ] Rondleiding als compact (?) icoon
 - [x] typecheck + tests
 - [ ] db/107 migratie draaien (wacht op database-sleutel)
+
+## Import-ronde (okt 2026)
+- [x] Project geïmporteerd, Neon gekoppeld, 801 tests groen
+- [ ] Testaccount test_preview@rout.be seeden en inloggen in preview
+- [ ] Ingelogde controles: workspace-switch, Pagina-Wisselaar 3 tabs, 0 MB-upload melding
+- [ ] Publieke boekingspagina: intakevragen + gekozen tijd uit widget end-to-end
+- [ ] RLS-audit draaien en resultaat rapporteren
