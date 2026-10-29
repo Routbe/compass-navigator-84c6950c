@@ -1,0 +1,24 @@
+# Roadmap
+- [ ] Enterprise booking: publieke intakevragen en veilige opslag afronden
+- [ ] Enterprise booking: capaciteit en uitzonderingen controleren
+- [ ] Smart widget: drie vrije tijden en vooraf gekozen boekingscontext
+- [ ] Nieuwe migraties uitvoeren en volledige scope/RLS-audit verifiëren
+- [ ] Preview-testaccount seeden en ingelogde workspace/tabs/0 MB-upload controleren
+- [ ] Nieuwe regeltests en architectuurnotities afronden
+- [x] Fase 1: kleinere rondleiding-knop, Coach verkleint tot bolletje met %-ring
+- [x] Fase 2: één Coach-score met checklist (verificatie + extra pagina meegeteld)
+- [x] Fase 3: opslaglimiet op alle uploadpaden; video-links gevalideerd; concept/publiceren bestond al
+- [x] Fase 4: Boekingen in Pagina-Wisselaar met Inhoud | Vormgeving | Statistieken
+- [x] Fase 5: eigen status, API-sleutel, privacyregels, publiek endpoint
+- [ ] Migratie db/106 draaien (wacht op database-sleutel; tabel wordt ook automatisch aangemaakt)
+- [ ] Video-upload (Pro) naar Scaleway: wacht op opslagsleutels om te testen
+- [x] Logo's Mastodon/wsocial.eu overal gelijk, naam "wsocial.eu"
+- [ ] Bovenbalk-glitch in venster Live integratie toevoegen
+- [ ] Snapchat-koppeling herstellen
+- [ ] Mastodon rel="me" verificatie bij Identiteit
+- [x] Scope-wisselaar in profielmenu op alle pagina's
+- [x] Workspace publieke pagina rout.be/w/slug (slug: min 3, a-z0-9-, gereserveerde woorden)
+- [ ] Links/statistieken/instellingen per scope
+- [ ] Rondleiding als compact (?) icoon
+- [x] typecheck + tests
+- [ ] db/107 migratie draaien (wacht op database-sleutel)
