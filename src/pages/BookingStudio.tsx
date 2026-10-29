@@ -219,7 +219,7 @@ function Types({ data }: { data: Studio }) {
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Switch aria-label={`${e.title} actief`} checked={e.isActive} onCheckedChange={async (v) => { await toggle({ data: { id: e.id, active: v } }); await qc.invalidateQueries({ queryKey: QK }); }} />
+                <Switch checked={e.isActive} onCheckedChange={async (v) => { await toggle({ data: { id: e.id, active: v } }); await qc.invalidateQueries({ queryKey: QK }); }} />
                 {t("booking.type.active")}
               </label>
               <Button size="sm" variant="soft" onClick={() => { void navigator.clipboard.writeText(`${origin}/book/${e.id}`); toast.success(t("booking.type.copied")); }}>
