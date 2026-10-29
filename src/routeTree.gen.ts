@@ -44,10 +44,10 @@ import { Route as TourRouteImport } from './routes/tour'
 import { Route as VcardQrRouteImport } from './routes/vcard-qr'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as WifiQrRouteImport } from './routes/wifi-qr'
-import { Route as UsernameSlugRouteImport } from './routes/$username.$slug'
-import { Route as UsernameBookingRouteImport } from './routes/$username.booking'
-import { Route as UsernameDonateRouteImport } from './routes/$username.donate'
-import { Route as UsernameTipRouteImport } from './routes/$username.tip'
+import { Route as UsernameSlugRouteImport } from './routes/$username_.$slug'
+import { Route as UsernameBookingRouteImport } from './routes/$username_.booking'
+import { Route as UsernameDonateRouteImport } from './routes/$username_.donate'
+import { Route as UsernameTipRouteImport } from './routes/$username_.tip'
 import { Route as DotwellKnownAtprotoDidRouteImport } from './routes/[.]well-known.atproto-did'
 import { Route as DotwellKnownJwksDotjsonRouteImport } from './routes/[.]well-known.jwks[.]json'
 import { Route as DotwellKnownOpenidConfigurationRouteImport } from './routes/[.]well-known.openid-configuration'
@@ -124,9 +124,9 @@ import { Route as ApiV1PresenceRouteImport } from './routes/api_.v1.presence'
 import { Route as ApiYoutubeStartRouteImport } from './routes/api_.youtube.start'
 import { Route as AuthMastodonCallbackRouteImport } from './routes/auth_.mastodon.callback'
 import { Route as RUAliasRouteImport } from './routes/r.u.$alias'
-import { Route as UUsernameSlugRouteImport } from './routes/u.$username.$slug'
-import { Route as UUsernameDonateRouteImport } from './routes/u.$username.donate'
-import { Route as UUsernameTipRouteImport } from './routes/u.$username.tip'
+import { Route as UUsernameSlugRouteImport } from './routes/u.$username_.$slug'
+import { Route as UUsernameDonateRouteImport } from './routes/u.$username_.donate'
+import { Route as UUsernameTipRouteImport } from './routes/u.$username_.tip'
 import { Route as AuthenticatedConsoleAppsIndexRouteImport } from './routes/_authenticated/console.apps.index'
 import { Route as AuthenticatedConsoleAppsAppIdRouteImport } from './routes/_authenticated/console.apps.$appId'
 import { Route as AuthenticatedConsoleAppsNewRouteImport } from './routes/_authenticated/console.apps.new'
@@ -356,24 +356,24 @@ const WifiQrRoute = WifiQrRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const UsernameSlugRoute = UsernameSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => UsernameRoute,
+  id: '/$username_/$slug',
+  path: '/$username/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UsernameBookingRoute = UsernameBookingRouteImport.update({
-  id: '/booking',
-  path: '/booking',
-  getParentRoute: () => UsernameRoute,
+  id: '/$username_/booking',
+  path: '/$username/booking',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UsernameDonateRoute = UsernameDonateRouteImport.update({
-  id: '/donate',
-  path: '/donate',
-  getParentRoute: () => UsernameRoute,
+  id: '/$username_/donate',
+  path: '/$username/donate',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UsernameTipRoute = UsernameTipRouteImport.update({
-  id: '/tip',
-  path: '/tip',
-  getParentRoute: () => UsernameRoute,
+  id: '/$username_/tip',
+  path: '/$username/tip',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DotwellKnownAtprotoDidRoute = DotwellKnownAtprotoDidRouteImport.update({
   id: '/.well-known/atproto-did',
@@ -776,19 +776,19 @@ const RUAliasRoute = RUAliasRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const UUsernameSlugRoute = UUsernameSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => UUsernameRoute,
+  id: '/u/$username_/$slug',
+  path: '/u/$username/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UUsernameDonateRoute = UUsernameDonateRouteImport.update({
-  id: '/donate',
-  path: '/donate',
-  getParentRoute: () => UUsernameRoute,
+  id: '/u/$username_/donate',
+  path: '/u/$username/donate',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UUsernameTipRoute = UUsernameTipRouteImport.update({
-  id: '/tip',
-  path: '/tip',
-  getParentRoute: () => UUsernameRoute,
+  id: '/u/$username_/tip',
+  path: '/u/$username/tip',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedConsoleAppsIndexRoute =
   AuthenticatedConsoleAppsIndexRouteImport.update({
@@ -1097,7 +1097,7 @@ const ApiPublicBookingsIdActionRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRouteWithChildren
+  '/$username': typeof UsernameRoute
   '/about': typeof AboutRoute
   '/api': typeof ApiRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
@@ -1161,7 +1161,7 @@ export interface FileRoutesByFullPath {
   '/review/$token': typeof ReviewTokenRoute
   '/s/$slug': typeof SSlugRoute
   '/stats/$token': typeof StatsTokenRoute
-  '/u/$username': typeof UUsernameRouteWithChildren
+  '/u/$username': typeof UUsernameRoute
   '/w/$slug': typeof WSlugRoute
   '/workspace-transfer/$token': typeof WorkspaceTransferTokenRoute
   '/auth/': typeof AuthIndexRoute
@@ -1269,7 +1269,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRouteWithChildren
+  '/$username': typeof UsernameRoute
   '/about': typeof AboutRoute
   '/api': typeof ApiRouteWithChildren
   '/batch': typeof BatchRoute
@@ -1330,7 +1330,7 @@ export interface FileRoutesByTo {
   '/review/$token': typeof ReviewTokenRoute
   '/s/$slug': typeof SSlugRoute
   '/stats/$token': typeof StatsTokenRoute
-  '/u/$username': typeof UUsernameRouteWithChildren
+  '/u/$username': typeof UUsernameRoute
   '/w/$slug': typeof WSlugRoute
   '/workspace-transfer/$token': typeof WorkspaceTransferTokenRoute
   '/auth': typeof AuthIndexRoute
@@ -1437,7 +1437,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$username': typeof UsernameRouteWithChildren
+  '/$username': typeof UsernameRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/about': typeof AboutRoute
   '/api': typeof ApiRouteWithChildren
@@ -1471,10 +1471,10 @@ export interface FileRoutesById {
   '/vcard-qr': typeof VcardQrRoute
   '/verify': typeof VerifyRoute
   '/wifi-qr': typeof WifiQrRoute
-  '/$username/$slug': typeof UsernameSlugRoute
-  '/$username/booking': typeof UsernameBookingRoute
-  '/$username/donate': typeof UsernameDonateRoute
-  '/$username/tip': typeof UsernameTipRoute
+  '/$username_/$slug': typeof UsernameSlugRoute
+  '/$username_/booking': typeof UsernameBookingRoute
+  '/$username_/donate': typeof UsernameDonateRoute
+  '/$username_/tip': typeof UsernameTipRoute
   '/.well-known/atproto-did': typeof DotwellKnownAtprotoDidRoute
   '/.well-known/jwks.json': typeof DotwellKnownJwksDotjsonRoute
   '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
@@ -1502,7 +1502,7 @@ export interface FileRoutesById {
   '/review/$token': typeof ReviewTokenRoute
   '/s/$slug': typeof SSlugRoute
   '/stats/$token': typeof StatsTokenRoute
-  '/u/$username': typeof UUsernameRouteWithChildren
+  '/u/$username': typeof UUsernameRoute
   '/w/$slug': typeof WSlugRoute
   '/workspace-transfer/$token': typeof WorkspaceTransferTokenRoute
   '/auth/': typeof AuthIndexRoute
@@ -1549,9 +1549,9 @@ export interface FileRoutesById {
   '/api_/youtube/start': typeof ApiYoutubeStartRoute
   '/auth_/mastodon/callback': typeof AuthMastodonCallbackRoute
   '/r/u/$alias': typeof RUAliasRoute
-  '/u/$username/$slug': typeof UUsernameSlugRoute
-  '/u/$username/donate': typeof UUsernameDonateRoute
-  '/u/$username/tip': typeof UUsernameTipRoute
+  '/u/$username_/$slug': typeof UUsernameSlugRoute
+  '/u/$username_/donate': typeof UUsernameDonateRoute
+  '/u/$username_/tip': typeof UUsernameTipRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/console/': typeof AuthenticatedConsoleIndexRoute
   '/_authenticated/console/apps/$appId': typeof AuthenticatedConsoleAppsAppIdRouteWithChildren
@@ -1985,10 +1985,10 @@ export interface FileRouteTypes {
     | '/vcard-qr'
     | '/verify'
     | '/wifi-qr'
-    | '/$username/$slug'
-    | '/$username/booking'
-    | '/$username/donate'
-    | '/$username/tip'
+    | '/$username_/$slug'
+    | '/$username_/booking'
+    | '/$username_/donate'
+    | '/$username_/tip'
     | '/.well-known/atproto-did'
     | '/.well-known/jwks.json'
     | '/.well-known/openid-configuration'
@@ -2063,9 +2063,9 @@ export interface FileRouteTypes {
     | '/api_/youtube/start'
     | '/auth_/mastodon/callback'
     | '/r/u/$alias'
-    | '/u/$username/$slug'
-    | '/u/$username/donate'
-    | '/u/$username/tip'
+    | '/u/$username_/$slug'
+    | '/u/$username_/donate'
+    | '/u/$username_/tip'
     | '/_authenticated/admin/'
     | '/_authenticated/console/'
     | '/_authenticated/console/apps/$appId'
@@ -2125,7 +2125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  UsernameRoute: typeof UsernameRouteWithChildren
+  UsernameRoute: typeof UsernameRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AboutRoute: typeof AboutRoute
   ApiRoute: typeof ApiRouteWithChildren
@@ -2159,6 +2159,10 @@ export interface RootRouteChildren {
   VcardQrRoute: typeof VcardQrRoute
   VerifyRoute: typeof VerifyRoute
   WifiQrRoute: typeof WifiQrRoute
+  UsernameSlugRoute: typeof UsernameSlugRoute
+  UsernameBookingRoute: typeof UsernameBookingRoute
+  UsernameDonateRoute: typeof UsernameDonateRoute
+  UsernameTipRoute: typeof UsernameTipRoute
   DotwellKnownAtprotoDidRoute: typeof DotwellKnownAtprotoDidRoute
   DotwellKnownJwksDotjsonRoute: typeof DotwellKnownJwksDotjsonRoute
   DotwellKnownOpenidConfigurationRoute: typeof DotwellKnownOpenidConfigurationRoute
@@ -2177,7 +2181,7 @@ export interface RootRouteChildren {
   ReviewTokenRoute: typeof ReviewTokenRoute
   SSlugRoute: typeof SSlugRoute
   StatsTokenRoute: typeof StatsTokenRoute
-  UUsernameRoute: typeof UUsernameRouteWithChildren
+  UUsernameRoute: typeof UUsernameRoute
   WSlugRoute: typeof WSlugRoute
   WorkspaceTransferTokenRoute: typeof WorkspaceTransferTokenRoute
   ApiAdminMailCheckRoute: typeof ApiAdminMailCheckRoute
@@ -2200,6 +2204,9 @@ export interface RootRouteChildren {
   ApiYoutubeStartRoute: typeof ApiYoutubeStartRoute
   AuthMastodonCallbackRoute: typeof AuthMastodonCallbackRoute
   RUAliasRoute: typeof RUAliasRoute
+  UUsernameSlugRoute: typeof UUsernameSlugRoute
+  UUsernameDonateRoute: typeof UUsernameDonateRoute
+  UUsernameTipRoute: typeof UUsernameTipRoute
   ApiPublicAuthProvidersRoute: typeof ApiPublicAuthProvidersRoute
   ApiPublicBadgeHandleRoute: typeof ApiPublicBadgeHandleRoute
   ApiPublicBlueskyCallbackRoute: typeof ApiPublicBlueskyCallbackRoute
@@ -2484,33 +2491,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WifiQrRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$username/$slug': {
-      id: '/$username/$slug'
-      path: '/$slug'
+    '/$username_/$slug': {
+      id: '/$username_/$slug'
+      path: '/$username/$slug'
       fullPath: '/$username/$slug'
       preLoaderRoute: typeof UsernameSlugRouteImport
-      parentRoute: typeof UsernameRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/$username/booking': {
-      id: '/$username/booking'
-      path: '/booking'
+    '/$username_/booking': {
+      id: '/$username_/booking'
+      path: '/$username/booking'
       fullPath: '/$username/booking'
       preLoaderRoute: typeof UsernameBookingRouteImport
-      parentRoute: typeof UsernameRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/$username/donate': {
-      id: '/$username/donate'
-      path: '/donate'
+    '/$username_/donate': {
+      id: '/$username_/donate'
+      path: '/$username/donate'
       fullPath: '/$username/donate'
       preLoaderRoute: typeof UsernameDonateRouteImport
-      parentRoute: typeof UsernameRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/$username/tip': {
-      id: '/$username/tip'
-      path: '/tip'
+    '/$username_/tip': {
+      id: '/$username_/tip'
+      path: '/$username/tip'
       fullPath: '/$username/tip'
       preLoaderRoute: typeof UsernameTipRouteImport
-      parentRoute: typeof UsernameRoute
+      parentRoute: typeof rootRouteImport
     }
     '/.well-known/atproto-did': {
       id: '/.well-known/atproto-did'
@@ -3044,26 +3051,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RUAliasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/u/$username/$slug': {
-      id: '/u/$username/$slug'
-      path: '/$slug'
+    '/u/$username_/$slug': {
+      id: '/u/$username_/$slug'
+      path: '/u/$username/$slug'
       fullPath: '/u/$username/$slug'
       preLoaderRoute: typeof UUsernameSlugRouteImport
-      parentRoute: typeof UUsernameRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/u/$username/donate': {
-      id: '/u/$username/donate'
-      path: '/donate'
+    '/u/$username_/donate': {
+      id: '/u/$username_/donate'
+      path: '/u/$username/donate'
       fullPath: '/u/$username/donate'
       preLoaderRoute: typeof UUsernameDonateRouteImport
-      parentRoute: typeof UUsernameRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/u/$username/tip': {
-      id: '/u/$username/tip'
-      path: '/tip'
+    '/u/$username_/tip': {
+      id: '/u/$username_/tip'
+      path: '/u/$username/tip'
       fullPath: '/u/$username/tip'
       preLoaderRoute: typeof UUsernameTipRouteImport
-      parentRoute: typeof UUsernameRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/console/apps/': {
       id: '/_authenticated/console/apps/'
@@ -3439,24 +3446,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface UsernameRouteChildren {
-  UsernameSlugRoute: typeof UsernameSlugRoute
-  UsernameBookingRoute: typeof UsernameBookingRoute
-  UsernameDonateRoute: typeof UsernameDonateRoute
-  UsernameTipRoute: typeof UsernameTipRoute
-}
-
-const UsernameRouteChildren: UsernameRouteChildren = {
-  UsernameSlugRoute: UsernameSlugRoute,
-  UsernameBookingRoute: UsernameBookingRoute,
-  UsernameDonateRoute: UsernameDonateRoute,
-  UsernameTipRoute: UsernameTipRoute,
-}
-
-const UsernameRouteWithChildren = UsernameRoute._addFileChildren(
-  UsernameRouteChildren,
-)
-
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminContactRoute: typeof AuthenticatedAdminContactRoute
   AuthenticatedAdminCustomBadgesRoute: typeof AuthenticatedAdminCustomBadgesRoute
@@ -3659,25 +3648,9 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
-interface UUsernameRouteChildren {
-  UUsernameSlugRoute: typeof UUsernameSlugRoute
-  UUsernameDonateRoute: typeof UUsernameDonateRoute
-  UUsernameTipRoute: typeof UUsernameTipRoute
-}
-
-const UUsernameRouteChildren: UUsernameRouteChildren = {
-  UUsernameSlugRoute: UUsernameSlugRoute,
-  UUsernameDonateRoute: UUsernameDonateRoute,
-  UUsernameTipRoute: UUsernameTipRoute,
-}
-
-const UUsernameRouteWithChildren = UUsernameRoute._addFileChildren(
-  UUsernameRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  UsernameRoute: UsernameRouteWithChildren,
+  UsernameRoute: UsernameRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AboutRoute: AboutRoute,
   ApiRoute: ApiRouteWithChildren,
@@ -3711,6 +3684,10 @@ const rootRouteChildren: RootRouteChildren = {
   VcardQrRoute: VcardQrRoute,
   VerifyRoute: VerifyRoute,
   WifiQrRoute: WifiQrRoute,
+  UsernameSlugRoute: UsernameSlugRoute,
+  UsernameBookingRoute: UsernameBookingRoute,
+  UsernameDonateRoute: UsernameDonateRoute,
+  UsernameTipRoute: UsernameTipRoute,
   DotwellKnownAtprotoDidRoute: DotwellKnownAtprotoDidRoute,
   DotwellKnownJwksDotjsonRoute: DotwellKnownJwksDotjsonRoute,
   DotwellKnownOpenidConfigurationRoute: DotwellKnownOpenidConfigurationRoute,
@@ -3729,7 +3706,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewTokenRoute: ReviewTokenRoute,
   SSlugRoute: SSlugRoute,
   StatsTokenRoute: StatsTokenRoute,
-  UUsernameRoute: UUsernameRouteWithChildren,
+  UUsernameRoute: UUsernameRoute,
   WSlugRoute: WSlugRoute,
   WorkspaceTransferTokenRoute: WorkspaceTransferTokenRoute,
   ApiAdminMailCheckRoute: ApiAdminMailCheckRoute,
@@ -3752,6 +3729,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiYoutubeStartRoute: ApiYoutubeStartRoute,
   AuthMastodonCallbackRoute: AuthMastodonCallbackRoute,
   RUAliasRoute: RUAliasRoute,
+  UUsernameSlugRoute: UUsernameSlugRoute,
+  UUsernameDonateRoute: UUsernameDonateRoute,
+  UUsernameTipRoute: UUsernameTipRoute,
   ApiPublicAuthProvidersRoute: ApiPublicAuthProvidersRoute,
   ApiPublicBadgeHandleRoute: ApiPublicBadgeHandleRoute,
   ApiPublicBlueskyCallbackRoute: ApiPublicBlueskyCallbackRoute,
