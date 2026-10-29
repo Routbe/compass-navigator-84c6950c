@@ -16,6 +16,6 @@ describe("profile sub-pages", () => {
 
   it("include the booking page as its own top-level page", () => {
     expect(files).toContain("$username_.booking.tsx");
-    expect(readFileSync(join(routesDir, "$username.tsx"), "utf8")).not.toContain("<Outlet");
+    expect(readFileSync(join(routesDir, "$username_.booking.tsx"), "utf8")).toContain('createFileRoute("/$username_/booking")');
   });
 });
