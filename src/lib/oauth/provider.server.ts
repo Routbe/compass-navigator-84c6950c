@@ -496,56 +496,15 @@ async function consumeCode(code: string) {
 
 /* ----------------------------------------------------------- signing keys */
 
-type Jwk = JsonWebKey & { kid?: string; alg?: string; use?: string };
-type KeyRecord = { kid: string; privateJwk: Jwk; publicJwk: Jwk };
-
-async function activeKey(): Promise<KeyRecord> {
-  const rows = (await sql`select * from public.oauth_signing_keys
-    where retired_at is null order by created_at desc limit 1`) as Row[];
-  if (rows[0]) {
-    return {
-      kid: String(rows[0]["kid"]),
-      privateJwk: rows[0]["private_jwk"] as Jwk,
-      publicJwk: rows[0]["public_jwk"] as Jwk,
-    };
-  }
-  const pair = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
-  const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
-  const kid = randomToken(8);
-  const withMeta: Jwk = { ...publicJwk, kid, alg: "ES256", use: "sig" };
-  await sql`insert into public.oauth_signing_keys (kid, private_jwk, public_jwk)
-    values (${kid}, ${JSON.stringify({ ...privateJwk, kid })}, ${JSON.stringify(withMeta)})`;
-  return { kid, privateJwk: { ...privateJwk, kid }, publicJwk: withMeta };
-}
-
-export async function publicJwks(): Promise<{ keys: Jwk[] }> {
-  const rows = (await sql`select public_jwk from public.oauth_signing_keys
-    where retired_at is null order by created_at desc`) as Row[];
-  if (rows.length === 0) return { keys: [(await activeKey()).publicJwk] };
-  return { keys: rows.map((r) => r["public_jwk"] as Jwk) };
-}
+export { publicJwks } from "./keys.server";
 
 async function signJwt(payload: Record<string, unknown>): Promise<string> {
+  const { activeKey } = await import("./keys.server");
   const key = await activeKey();
-  const cryptoKey = await crypto.subtle.importKey(
-    "jwk",
-    key.privateJwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
   const header = { alg: "ES256", typ: "JWT", kid: key.kid };
   const body = `${base64url(enc.encode(JSON.stringify(header)))}.${base64url(enc.encode(JSON.stringify(payload)))}`;
   const signature = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      cryptoKey,
-      enc.encode(body) as BufferSource,
-    ),
+    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key.privateKey, enc.encode(body) as BufferSource),
   );
   return `${body}.${base64url(signature)}`;
 }
@@ -754,17 +713,16 @@ export async function verifyAccessToken(
   const [headerPart, payloadPart, signaturePart] = parts as [string, string, string];
   const fromB64 = (value: string) =>
     Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-  const header = JSON.parse(new TextDecoder().decode(fromB64(headerPart))) as { kid?: string };
-  const { keys } = await publicJwks();
-  const jwk = keys.find((k) => k.kid === header.kid) ?? keys[0];
-  if (!jwk) throw new OAuthError("invalid_token", "Geen ondertekensleutel gevonden.");
-  const key = await crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["verify"],
-  );
+  let header: { alg?: unknown; kid?: unknown };
+  try {
+    header = JSON.parse(new TextDecoder().decode(fromB64(headerPart))) as { alg?: unknown; kid?: unknown };
+  } catch {
+    throw new OAuthError("invalid_token", "Ongeldig token.");
+  }
+  // Alleen ES256 en alleen een exact bekende `kid`; nooit terugvallen op een andere sleutel.
+  const { verificationKey } = await import("./keys.server");
+  const key = await verificationKey(header);
+  if (!key) throw new OAuthError("invalid_token", "Onbekende ondertekensleutel.");
   const ok = await crypto.subtle.verify(
     { name: "ECDSA", hash: "SHA-256" },
     key,
