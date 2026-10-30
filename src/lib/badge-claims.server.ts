@@ -1,27 +1,7 @@
 /** Claim-a-Stamp: claim links that grant a custom badge. Admin checks happen in the callers. */
 import { sql } from "@/lib/neon";
 import { writeAudit } from "./admin.server";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { claimState } from "./stamp-rules";
-
-/** Safety net for db/92 when migrations have not run yet. */
-let ready: Promise<void> | null = null;
-function ensureTables() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.badge_claim_links (
-      id uuid primary key default gen_random_uuid(), token text not null unique,
-      badge_id uuid not null references public.custom_badges(id) on delete cascade, reason text,
-      max_claims integer, claims_count integer not null default 0, expires_at timestamptz, revoked_at timestamptz,
-      created_by uuid, created_at timestamptz not null default now())`;
-    await sql`create table if not exists public.badge_claim_redemptions (
-      link_id uuid not null references public.badge_claim_links(id) on delete cascade, user_id uuid not null,
-      claimed_at timestamptz not null default now(), primary key (link_id, user_id))`;
-  }, "badge_claim_links").catch((e) => {
-    ready = null;
-    throw e;
-  });
-  return ready;
-}
 
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
@@ -32,7 +12,6 @@ function newToken() {
 }
 
 export async function createClaimLink(adminId: string, input: { badgeId: string; maxClaims: number | null; expiresAt: string | null; reason: string | null }) {
-  await ensureTables();
   const token = newToken();
   const rows = (await sql`insert into public.badge_claim_links (token, badge_id, reason, max_claims, expires_at, created_by)
     values (${token}, ${input.badgeId}, ${input.reason}, ${input.maxClaims}, ${input.expiresAt}, ${adminId}) returning id`) as Row[];
@@ -41,7 +20,6 @@ export async function createClaimLink(adminId: string, input: { badgeId: string;
 }
 
 export async function listClaimLinks(badgeId: string) {
-  await ensureTables();
   const rows = (await sql`select id, token, reason, max_claims, claims_count, expires_at, revoked_at, created_at
     from public.badge_claim_links where badge_id = ${badgeId} order by created_at desc limit 100`) as Row[];
   return rows.map((r) => ({
@@ -66,7 +44,6 @@ export type ClaimResult = "claimed" | "already" | "invalid" | "expired" | "exhau
 
 /** Public preview of a link (no secrets beyond the badge itself). */
 export async function previewClaim(token: string) {
-  await ensureTables();
   const r = ((await sql`select l.max_claims, l.claims_count, l.expires_at, l.revoked_at,
       b.slug, b.name, b.description, b.image_url, b.kind, b.accent_color, b.motto
     from public.badge_claim_links l join public.custom_badges b on b.id = l.badge_id
@@ -90,7 +67,6 @@ export async function previewClaim(token: string) {
 
 /** Lock first, then take a fresh READ COMMITTED snapshot in the same gateway transaction. */
 export async function redeemClaim(token: string, userId: string): Promise<ClaimResult> {
-  await ensureTables();
   const results = await sql.transaction([
     sql`select id from public.badge_claim_links where token = ${token} for update`,
     sql`

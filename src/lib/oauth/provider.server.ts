@@ -1,6 +1,5 @@
 import { routHandleClaim } from "./handle-sync";
 import { isValidRedirectUri, cleanRedirectUri, findMatchingRedirect, normalizeRedirectUri, redirectUrisMatch } from "./redirect-match";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 /**
  * "Login met ROUT" — native OAuth 2.1 / OIDC provider.
  *
@@ -111,103 +110,6 @@ export function issuer(): string {
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
 
-let tablesReady = false;
-/** Vangnet zodat de console ook werkt vóór migratie 42 handmatig is gedraaid. */
-export async function ensureTables(): Promise<void> {
-  if (tablesReady) return;
-  await runSchemaEnsure(async () => {
-  await sql`create table if not exists public.oauth_clients (
-    id uuid primary key default gen_random_uuid(),
-    owner_user_id uuid not null,
-    client_id text not null unique,
-    secret_hash text,
-    name text not null,
-    logo_url text,
-    homepage_url text,
-    privacy_url text,
-    terms_url text,
-    redirect_uris text[] not null default '{}',
-    scopes text[] not null default '{openid,profile}',
-    status text not null default 'active',
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-    secret_rotated_at timestamptz
-  )`;
-  await sql`create table if not exists public.oauth_auth_codes (
-    code_hash text primary key,
-    client_id text not null,
-    user_id uuid not null,
-    redirect_uri text not null,
-    scopes text[] not null default '{}',
-    code_challenge text not null,
-    nonce text,
-    expires_at timestamptz not null,
-    consumed_at timestamptz,
-    created_at timestamptz not null default now()
-  )`;
-  await sql`create table if not exists public.oauth_consents (
-    user_id uuid not null,
-    client_id text not null,
-    scopes text[] not null default '{}',
-    granted_at timestamptz not null default now(),
-    primary key (user_id, client_id)
-  )`;
-  await sql`create table if not exists public.oauth_signing_keys (
-    kid text primary key,
-    private_jwk jsonb not null,
-    public_jwk jsonb not null,
-    created_at timestamptz not null default now(),
-    retired_at timestamptz
-  )`;
-  // Migratie 44 — uitsluitend voor "Login met ROUT" (geen invloed op rout.be-login).
-  await sql`alter table public.oauth_clients add column if not exists flow_preference text not null default 'seamless'`;
-  await sql`alter table public.oauth_clients add column if not exists rich_identity_enabled boolean not null default false`;
-  await sql`alter table public.oauth_clients add column if not exists handle_sync_enabled boolean not null default false`;
-  await sql`alter table public.oauth_auth_codes add column if not exists acr text`;
-  await sql`alter table public.oauth_auth_codes add column if not exists rich_identity boolean not null default false`;
-  await sql`create table if not exists public.oauth_step_up_codes (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null,
-    client_id text not null,
-    code_hash text not null,
-    attempts int not null default 0,
-    expires_at timestamptz not null,
-    verified_at timestamptz,
-    consumed_at timestamptz,
-    created_at timestamptz not null default now()
-  )`;
-  // Migratie 50 — Developer Console (publicatie, contact, beveiliging).
-  await sql`alter table public.oauth_clients add column if not exists publishing_status text not null default 'testing'`;
-  await sql`alter table public.oauth_clients add column if not exists support_email text`;
-  await sql`alter table public.oauth_clients add column if not exists legal_owner text`;
-  await sql`alter table public.oauth_clients add column if not exists dpo_email text`;
-  await sql`alter table public.oauth_clients add column if not exists require_pkce boolean not null default true`;
-  await sql`alter table public.oauth_clients add column if not exists access_token_ttl integer not null default 3600`;
-  await sql`alter table public.oauth_clients add column if not exists allowed_ips text[] not null default '{}'`;
-  await sql`alter table public.oauth_clients add column if not exists account_discovery_enabled boolean not null default false`;
-  // Migratie 62 — beschrijving (wizard stap 1).
-  await sql`alter table public.oauth_clients add column if not exists description text`;
-  await sql`create table if not exists public.oauth_client_test_users (
-    id uuid primary key default gen_random_uuid(),
-    client_id text not null,
-    identifier text not null,
-    created_at timestamptz not null default now(),
-    unique (client_id, identifier)
-  )`;
-  await sql`create table if not exists public.oauth_client_verification_requests (
-    id uuid primary key default gen_random_uuid(),
-    client_id text not null,
-    requested_by uuid not null,
-    status text not null default 'pending',
-    note text,
-    reviewed_by uuid,
-    reviewed_at timestamptz,
-    created_at timestamptz not null default now()
-  )`;
-  }, "provider.server.ts");
-  tablesReady = true;
-}
-
 type Row = Record<string, unknown>;
 
 function toClient(row: Row): OAuthClient {
@@ -242,14 +144,12 @@ function toClient(row: Row): OAuthClient {
 /* ----------------------------------------------------------------- client */
 
 export async function listClients(ownerUserId: string): Promise<OAuthClient[]> {
-  await ensureTables();
   const rows = (await sql`select * from public.oauth_clients
     where owner_user_id = ${ownerUserId} order by created_at desc`) as Row[];
   return rows.map(toClient);
 }
 
 export async function getClientByClientId(clientId: string): Promise<OAuthClient | null> {
-  await ensureTables();
   const rows = (await sql`select * from public.oauth_clients
     where client_id = ${clientId} limit 1`) as Row[];
   return rows[0] ? toClient(rows[0]) : null;
@@ -293,7 +193,6 @@ export async function createClient(
   ownerUserId: string,
   input: ClientInput,
 ): Promise<{ client: OAuthClient; clientSecret: string }> {
-  await ensureTables();
   const { name, uris, scopes } = sanitize(input);
   const clientId = `rout_${randomToken(16)}`;
   const clientSecret = generateClientSecret();
@@ -325,7 +224,6 @@ export async function updateClient(
   id: string,
   input: ClientInput,
 ): Promise<OAuthClient> {
-  await ensureTables();
   const { name, uris, scopes } = sanitize(input);
   const rows = (await sql`update public.oauth_clients set
       name = ${name}, logo_url = ${input.logoUrl ?? null},
@@ -358,7 +256,6 @@ export async function updateClientSettings(
   id: string,
   s: ClientSettings,
 ): Promise<OAuthClient> {
-  await ensureTables();
   const current = (await sql`select * from public.oauth_clients
     where id = ${id} and owner_user_id = ${ownerUserId} limit 1`) as Row[];
   if (!current[0]) throw new OAuthError("not_found", "Deze app bestaat niet (meer).");
@@ -402,7 +299,6 @@ async function ownedClientId(ownerUserId: string, id: string): Promise<string> {
 /* ------------------------------------------------------- test users ----- */
 
 export async function listTestUsers(ownerUserId: string, id: string): Promise<string[]> {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   const rows = (await sql`select identifier from public.oauth_client_test_users
     where client_id = ${clientId} order by created_at`) as Row[];
@@ -410,7 +306,6 @@ export async function listTestUsers(ownerUserId: string, id: string): Promise<st
 }
 
 export async function addTestUser(ownerUserId: string, id: string, identifier: string) {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   const count = (await sql`select count(*)::int as n from public.oauth_client_test_users
     where client_id = ${clientId}`) as Row[];
@@ -422,7 +317,6 @@ export async function addTestUser(ownerUserId: string, id: string, identifier: s
 }
 
 export async function removeTestUser(ownerUserId: string, id: string, identifier: string) {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   await sql`delete from public.oauth_client_test_users
     where client_id = ${clientId} and identifier = ${identifier.toLowerCase()}`;
@@ -461,7 +355,6 @@ export async function userMayUseClient(
 export type VerificationStatus = "none" | "pending" | "verified" | "rejected";
 
 export async function latestVerification(ownerUserId: string, id: string) {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   const rows = (await sql`select status, created_at, reviewed_at
     from public.oauth_client_verification_requests
@@ -475,7 +368,6 @@ export async function latestVerification(ownerUserId: string, id: string) {
 }
 
 export async function requestVerification(ownerUserId: string, id: string, note: string) {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   const client = await getClientByClientId(clientId);
   if (!client?.supportEmail || !client.legalOwner || !client.privacyUrl) {
@@ -490,7 +382,6 @@ export async function requestVerification(ownerUserId: string, id: string, note:
 
 /** Enkel aanroepen nadat de beheerdersrol server-side is gecontroleerd. */
 export async function listPendingVerifications() {
-  await ensureTables();
   const rows = (await sql`select r.id, r.client_id, r.note, r.created_at, c.name, c.homepage_url,
       c.privacy_url, c.support_email, c.legal_owner
     from public.oauth_client_verification_requests r
@@ -510,7 +401,6 @@ export async function listPendingVerifications() {
 }
 
 export async function reviewVerification(reviewerId: string, requestId: string, approve: boolean) {
-  await ensureTables();
   await sql`update public.oauth_client_verification_requests
     set status = ${approve ? "verified" : "rejected"}, reviewed_by = ${reviewerId}, reviewed_at = now()
     where id = ${requestId} and status = 'pending'`;
@@ -529,7 +419,6 @@ export async function isVerifiedApp(clientId: string): Promise<boolean> {
 /* ---------------------------------------------------------- insights ---- */
 
 export async function clientInsights(ownerUserId: string, id: string) {
-  await ensureTables();
   const clientId = await ownedClientId(ownerUserId, id);
   const users = (await sql`select count(*)::int as n from public.oauth_consents
     where client_id = ${clientId}`) as Row[];
@@ -554,12 +443,10 @@ export function ipAllowed(client: OAuthClient, ip: string | null): boolean {
 }
 
 export async function deleteClient(ownerUserId: string, id: string): Promise<void> {
-  await ensureTables();
   await sql`delete from public.oauth_clients where id = ${id} and owner_user_id = ${ownerUserId}`;
 }
 
 export async function rotateClientSecret(ownerUserId: string, id: string): Promise<string> {
-  await ensureTables();
   const clientSecret = generateClientSecret();
   const secretHash = await hashClientSecret(clientSecret, await secretPepper());
   const rows = (await sql`update public.oauth_clients
@@ -581,7 +468,6 @@ export async function issueAuthorizationCode(input: {
   acr?: string | null;
   richIdentity?: boolean;
 }): Promise<string> {
-  await ensureTables();
   const code = randomToken(32);
   const hash = await sha256Base64Url(code);
   const expires = new Date(Date.now() + CODE_TTL_MS).toISOString();
@@ -610,58 +496,15 @@ async function consumeCode(code: string) {
 
 /* ----------------------------------------------------------- signing keys */
 
-type Jwk = JsonWebKey & { kid?: string; alg?: string; use?: string };
-type KeyRecord = { kid: string; privateJwk: Jwk; publicJwk: Jwk };
-
-async function activeKey(): Promise<KeyRecord> {
-  await ensureTables();
-  const rows = (await sql`select * from public.oauth_signing_keys
-    where retired_at is null order by created_at desc limit 1`) as Row[];
-  if (rows[0]) {
-    return {
-      kid: String(rows[0]["kid"]),
-      privateJwk: rows[0]["private_jwk"] as Jwk,
-      publicJwk: rows[0]["public_jwk"] as Jwk,
-    };
-  }
-  const pair = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
-  const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
-  const kid = randomToken(8);
-  const withMeta: Jwk = { ...publicJwk, kid, alg: "ES256", use: "sig" };
-  await sql`insert into public.oauth_signing_keys (kid, private_jwk, public_jwk)
-    values (${kid}, ${JSON.stringify({ ...privateJwk, kid })}, ${JSON.stringify(withMeta)})`;
-  return { kid, privateJwk: { ...privateJwk, kid }, publicJwk: withMeta };
-}
-
-export async function publicJwks(): Promise<{ keys: Jwk[] }> {
-  await ensureTables();
-  const rows = (await sql`select public_jwk from public.oauth_signing_keys
-    where retired_at is null order by created_at desc`) as Row[];
-  if (rows.length === 0) return { keys: [(await activeKey()).publicJwk] };
-  return { keys: rows.map((r) => r["public_jwk"] as Jwk) };
-}
+export { publicJwks } from "./keys.server";
 
 async function signJwt(payload: Record<string, unknown>): Promise<string> {
+  const { activeKey } = await import("./keys.server");
   const key = await activeKey();
-  const cryptoKey = await crypto.subtle.importKey(
-    "jwk",
-    key.privateJwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
   const header = { alg: "ES256", typ: "JWT", kid: key.kid };
   const body = `${base64url(enc.encode(JSON.stringify(header)))}.${base64url(enc.encode(JSON.stringify(payload)))}`;
   const signature = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      cryptoKey,
-      enc.encode(body) as BufferSource,
-    ),
+    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key.privateKey, enc.encode(body) as BufferSource),
   );
   return `${body}.${base64url(signature)}`;
 }
@@ -870,17 +713,16 @@ export async function verifyAccessToken(
   const [headerPart, payloadPart, signaturePart] = parts as [string, string, string];
   const fromB64 = (value: string) =>
     Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-  const header = JSON.parse(new TextDecoder().decode(fromB64(headerPart))) as { kid?: string };
-  const { keys } = await publicJwks();
-  const jwk = keys.find((k) => k.kid === header.kid) ?? keys[0];
-  if (!jwk) throw new OAuthError("invalid_token", "Geen ondertekensleutel gevonden.");
-  const key = await crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["verify"],
-  );
+  let header: { alg?: unknown; kid?: unknown };
+  try {
+    header = JSON.parse(new TextDecoder().decode(fromB64(headerPart))) as { alg?: unknown; kid?: unknown };
+  } catch {
+    throw new OAuthError("invalid_token", "Ongeldig token.");
+  }
+  // Alleen ES256 en alleen een exact bekende `kid`; nooit terugvallen op een andere sleutel.
+  const { verificationKey } = await import("./keys.server");
+  const key = await verificationKey(header);
+  if (!key) throw new OAuthError("invalid_token", "Onbekende ondertekensleutel.");
   const ok = await crypto.subtle.verify(
     { name: "ECDSA", hash: "SHA-256" },
     key,
@@ -911,7 +753,6 @@ export async function hasConsent(
   clientId: string,
   scopes: string[],
 ): Promise<boolean> {
-  await ensureTables();
   const rows = (await sql`select scopes from public.oauth_consents
     where user_id = ${userId} and client_id = ${clientId} limit 1`) as Row[];
   const granted = (rows[0]?.["scopes"] as string[] | null) ?? null;
@@ -922,7 +763,6 @@ export async function hasConsent(
 /* -------------------------------------------------------------- step-up */
 
 export async function createStepUpCode(userId: string, clientId: string): Promise<string> {
-  await ensureTables();
   const digits = crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000;
   const code = String(digits).padStart(6, "0");
   const hash = await sha256Base64Url(`${userId}:${clientId}:${code}`);
@@ -936,7 +776,6 @@ export async function createStepUpCode(userId: string, clientId: string): Promis
 
 /** Controleert de code (max. 5 pogingen, 10 min geldig) en markeert hem als geverifieerd. */
 export async function verifyStepUpCode(userId: string, clientId: string, code: string) {
-  await ensureTables();
   const rows = (await sql`select id, code_hash, attempts, expires_at from public.oauth_step_up_codes
     where user_id = ${userId} and client_id = ${clientId} and consumed_at is null and verified_at is null
     order by created_at desc limit 1`) as Row[];
@@ -958,7 +797,6 @@ export async function verifyStepUpCode(userId: string, clientId: string, code: s
 
 /** Verbruikt een recent geverifieerde code (eenmalig, binnen 10 minuten). */
 export async function consumeVerifiedStepUp(userId: string, clientId: string): Promise<boolean> {
-  await ensureTables();
   const rows = (await sql`update public.oauth_step_up_codes set consumed_at = now()
     where id = (select id from public.oauth_step_up_codes
                  where user_id = ${userId} and client_id = ${clientId}

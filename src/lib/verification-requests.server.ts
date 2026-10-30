@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 /**
  * Bedrijfs- en influencerverificatie — beide met manuele goedkeuring.
  *
@@ -26,59 +25,6 @@ const toPublicList = (rows: Row[]): PublicRow[] =>
 
 export const INFLUENCER_FEE_CENTS = 7000;
 
-let tablesReady = false;
-
-/** Maakt de tabellen aan wanneer migratie 41 nog niet liep. */
-async function ensureTables() {
-  if (tablesReady) return;
-  await runSchemaEnsure(async () => {
-  await sql`
-    create table if not exists public.business_verifications (
-      id             uuid primary key default gen_random_uuid(),
-      user_id        uuid not null,
-      company_name   text not null,
-      legal_form     text,
-      vat_number     text not null,
-      address        text,
-      country        text,
-      website_domain text not null,
-      contact_name   text,
-      contact_email  text,
-      status         text not null default 'pending',
-      admin_note     text,
-      created_at     timestamptz not null default now(),
-      reviewed_at    timestamptz,
-      reviewed_by    uuid
-    )
-  `;
-  await sql`
-    create table if not exists public.influencer_requests (
-      id             uuid primary key default gen_random_uuid(),
-      user_id        uuid not null,
-      handle_choices text[] not null default '{}',
-      social_links   jsonb not null default '[]'::jsonb,
-      motivation     text,
-      fee_cents      integer not null default 7000,
-      paid           boolean not null default false,
-      status         text not null default 'pending',
-      granted_handle text,
-      admin_note     text,
-      created_at     timestamptz not null default now(),
-      reviewed_at    timestamptz,
-      reviewed_by    uuid
-    )
-  `;
-  await sql`
-    alter table public.profiles
-      add column if not exists is_business boolean not null default false,
-      add column if not exists business_name text,
-      add column if not exists business_vat text,
-      add column if not exists is_influencer boolean not null default false
-  `;
-  }, "verification-requests.server.ts");
-  tablesReady = true;
-}
-
 /** Domeinnaam opschonen: `https://ROUT.be/` → `rout.be`. */
 export function normalizeDomain(raw: string): string {
   return String(raw ?? "")
@@ -104,7 +50,6 @@ export type BusinessInput = {
 
 /** Dient een bedrijfsaanvraag in (of vervangt de openstaande aanvraag). */
 export async function submitBusinessRequest(userId: string, input: BusinessInput) {
-  await ensureTables();
   const company = input.companyName.trim();
   const vat = input.vatNumber.trim().toUpperCase().replace(/\s+/g, "");
   const domain = normalizeDomain(input.websiteDomain);
@@ -132,7 +77,6 @@ export async function submitBusinessRequest(userId: string, input: BusinessInput
 
 /** De meest recente bedrijfsaanvraag van dit account. */
 export async function myBusinessRequest(userId: string) {
-  await ensureTables();
   const rows = (await sql`
     select id, company_name, vat_number, website_domain, status, admin_note, created_at, reviewed_at
       from public.business_verifications
@@ -155,7 +99,6 @@ export type InfluencerInput = {
  * anders blijft de aanvraag op `awaiting_payment` staan tot de € 70 binnen is.
  */
 export async function submitInfluencerRequest(userId: string, input: InfluencerInput) {
-  await ensureTables();
   const { normalizeHandleForStorage } = await import("./handle-rules");
   const choices = input.handleChoices
     .map((h) => normalizeHandleForStorage(h))
@@ -201,7 +144,6 @@ export async function submitInfluencerRequest(userId: string, input: InfluencerI
 }
 
 export async function myInfluencerRequest(userId: string) {
-  await ensureTables();
   const rows = (await sql`
     select id, handle_choices, social_links, status, fee_cents, paid, granted_handle,
            admin_note, created_at, reviewed_at
@@ -216,7 +158,6 @@ export async function myInfluencerRequest(userId: string) {
 /* ─────────────────────────── beheer ─────────────────────────── */
 
 export async function listBusinessRequests(status = "pending") {
-  await ensureTables();
   return toPublicList((await sql`
     select b.*, p.username, p.display_name
       from public.business_verifications b
@@ -228,7 +169,6 @@ export async function listBusinessRequests(status = "pending") {
 }
 
 export async function listInfluencerRequests(status = "pending") {
-  await ensureTables();
   return toPublicList((await sql`
     select i.*, p.username, p.display_name, coalesce(p.verified, false) as verified
       from public.influencer_requests i
@@ -245,7 +185,6 @@ export async function listInfluencerRequests(status = "pending") {
  * naam blijft als gratis /u/-pagina bestaan.
  */
 export async function approveBusinessRequest(requestId: string, adminId: string) {
-  await ensureTables();
   const rows = (await sql`
     select * from public.business_verifications where id = ${requestId} limit 1
   `) as Row[];
@@ -289,7 +228,6 @@ export async function rejectBusinessRequest(
   adminId: string,
   note?: string | null,
 ) {
-  await ensureTables();
   await sql`
     update public.business_verifications
        set status = 'rejected', admin_note = ${note ?? null},
@@ -308,7 +246,6 @@ export async function approveInfluencerRequest(
   adminId: string,
   handle?: string | null,
 ) {
-  await ensureTables();
   const rows = (await sql`
     select * from public.influencer_requests where id = ${requestId} limit 1
   `) as Row[];
@@ -359,7 +296,6 @@ export async function rejectInfluencerRequest(
   adminId: string,
   note?: string | null,
 ) {
-  await ensureTables();
   await sql`
     update public.influencer_requests
        set status = 'rejected', admin_note = ${note ?? null},
@@ -371,7 +307,6 @@ export async function rejectInfluencerRequest(
 
 /** Rechtstreekse toekenning door een beheerder, zonder aanvraag. */
 export async function setInfluencerFlag(userId: string, value: boolean) {
-  await ensureTables();
   await sql`update public.profiles set is_influencer = ${value} where id = ${userId}`;
   return { ok: true as const };
 }

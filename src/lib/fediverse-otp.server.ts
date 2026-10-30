@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { sql } from "@/lib/neon";
 
 /**
@@ -53,22 +52,6 @@ export function generateCode(): string {
   return String(buf[0]! % 1_000_000).padStart(6, "0");
 }
 
-let tableReady: Promise<void> | null = null;
-async function ensureTable() {
-  tableReady ??= runSchemaEnsure(async () => {
-    await sql`
-      create table if not exists public.fediverse_email_otp (
-        pending_key text primary key, email text not null, code_hash text not null,
-        attempts integer not null default 0, locked_until timestamptz,
-        expires_at timestamptz not null, created_at timestamptz not null default now()
-      )`;
-  }, "fediverse-otp.server.ts").catch((e) => {
-    tableReady = null;
-    throw e;
-  });
-  return tableReady;
-}
-
 type Row = { email: string; code_hash: string; attempts: number; locked_until: string | null; expires_at: string };
 
 async function readRow(key: string): Promise<Row | null> {
@@ -82,7 +65,6 @@ export class OtpError extends Error {}
 
 /** Maakt (of vervangt) de code en verstuurt ze. Een slot blijft gerespecteerd. */
 export async function issueCode(pendingRaw: string, email: string): Promise<void> {
-  await ensureTable();
   const key = await sha256(pendingRaw);
   const existing = await readRow(key);
   if (existing?.locked_until && Date.parse(existing.locked_until) > Date.now()) {
@@ -112,7 +94,6 @@ export async function issueCode(pendingRaw: string, email: string): Promise<void
 
 /** Controleert de code. Geeft het bevestigde e-mailadres terug. */
 export async function verifyCode(pendingRaw: string, code: string): Promise<string> {
-  await ensureTable();
   const key = await sha256(pendingRaw);
   const row = await readRow(key);
   if (!row) throw new OtpError("Vraag eerst een code aan.");

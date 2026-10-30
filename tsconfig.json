@@ -3,7 +3,7 @@
   // Build output and local caches must never enter the type-check program:
   // dist/ and .wrangler/ hold thousands of generated files and make a check
   // that normally takes seconds run for minutes.
-  "exclude": ["node_modules", "dist", "dist-ssr", ".wrangler", ".output", ".nitro", "supabase"],
+  "exclude": ["node_modules", "dist", "dist-ssr", ".wrangler", ".output", ".nitro"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

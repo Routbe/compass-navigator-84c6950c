@@ -77,17 +77,6 @@ async function listBetterAuth(userId: string): Promise<BaAccount[]> {
   }
 }
 
-let labelsReady: Promise<void> | null = null;
-function ensureLabels() {
-  labelsReady ??= import("@/lib/db/schema-ensure.server").then(({ runSchemaEnsure }) =>
-    runSchemaEnsure(async () => {
-      await sql`create table if not exists public.identity_labels (
-        account_id text primary key, provider text not null, label text not null, updated_at timestamptz not null default now())`;
-    }, "identity-labels"),
-  );
-  return labelsReady;
-}
-
 /** Profiel ophalen met het opgeslagen access token (alleen providers zonder bruikbaar id_token). */
 async function fetchProfile(provider: string, accessToken: string): Promise<Record<string, unknown> | null> {
   const urls: Record<string, string> = {
@@ -112,7 +101,6 @@ async function fetchProfile(provider: string, accessToken: string): Promise<Reco
 async function resolveLabels(accounts: BaAccount[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (accounts.length === 0) return out;
-  await ensureLabels().catch(() => undefined);
   try {
     const ids = accounts.map((a) => a.id);
     const rows = (await sql`select account_id, label from public.identity_labels where account_id = any(${ids})`) as Row[];

@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { sql } from "@/lib/neon";
 
 /**
@@ -22,40 +21,6 @@ export type RecordVisitInput = {
   userAgent?: string | null;
   country?: string | null;
 };
-
-let tableReady: Promise<void> | null = null;
-
-/** Zorgt dat migratie 40 aanwezig is, ook op databases zonder migratierun. */
-async function ensureTable(): Promise<void> {
-  tableReady ??= runSchemaEnsure(async () => {
-    await sql`
-      create table if not exists public.profile_visits (
-        id              bigserial primary key,
-        profile_user_id uuid,
-        handle          text not null,
-        space           text not null default 'alias',
-        path            text,
-        locale          text,
-        country         text,
-        device          text,
-        visitor_hash    text,
-        created_at      timestamptz not null default now()
-      )
-    `;
-    await sql`
-      create index if not exists profile_visits_user_time_idx
-        on public.profile_visits (profile_user_id, created_at desc)
-    `;
-    await sql`
-      create index if not exists profile_visits_handle_time_idx
-        on public.profile_visits (lower(handle), created_at desc)
-    `;
-  }, "visits.server.ts").catch((error) => {
-    tableReady = null;
-    throw error;
-  });
-  return tableReady;
-}
 
 async function dailyVisitorHash(ip: string, userAgent: string): Promise<string> {
   const salt = process.env["CONTACT_HASH_SALT"] ?? "rout-visits";
@@ -98,8 +63,6 @@ export async function recordVisit(input: RecordVisitInput): Promise<{ recorded: 
   if (recent.size > 5000) {
     for (const [k, at] of recent) if (now - at > DEDUPE_MS) recent.delete(k);
   }
-
-  await ensureTable();
 
   const ownerRows = (await sql`
     select id from public.profiles where lower(username) = ${handle} limit 1
@@ -177,7 +140,6 @@ export async function readVisitStats(
   const space = options.space ?? "all";
 
   try {
-    await ensureTable();
   } catch {
     return { ...EMPTY, days };
   }
@@ -266,23 +228,6 @@ export async function readVisitStats(
 
 /* ---------- Klikmetingen ---------- */
 
-let clicksReady: Promise<void> | null = null;
-async function ensureClicksTable(): Promise<void> {
-  clicksReady ??= runSchemaEnsure(async () => {
-    await sql`
-      create table if not exists public.profile_link_clicks (
-        id bigserial primary key, profile_user_id uuid, handle text not null,
-        block_id text not null, label text, space text not null default 'alias',
-        visitor_hash text, created_at timestamptz not null default now()
-      )
-    `;
-  }, "visits.server.ts:clicks").catch((error) => {
-    clicksReady = null;
-    throw error;
-  });
-  return clicksReady;
-}
-
 const recentClicks = new Map<string, number>();
 const CLICK_DEDUPE_MS = 10_000;
 
@@ -310,7 +255,6 @@ export async function recordLinkClick(input: {
   if (recentClicks.size > 5000) {
     for (const [k, at] of recentClicks) if (now - at > CLICK_DEDUPE_MS) recentClicks.delete(k);
   }
-  await ensureClicksTable();
   const owner = (await sql`
     select id from public.profiles where lower(username) = ${handle} limit 1
   `) as Row[];
@@ -347,7 +291,6 @@ export async function readLinkClickStats(
   const days = Math.min(Math.max(options.days ?? 30, 1), 365);
   const spaceFilter = !options.space || options.space === "all" ? null : options.space;
   try {
-    await ensureClicksTable();
   } catch {
     return { total: 0, perLink: [] };
   }

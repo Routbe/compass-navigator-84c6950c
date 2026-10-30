@@ -1,26 +1,9 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { hitRateLimit } from "@/lib/rate-limit-db.server";
 import { RATE_RULES } from "@/lib/rate-limit-rules";
 import { INBOUND_VERIFY_LINE, usesAutoSms, evaluateOtp, generateOtp, maskPhone, OTP_TTL_MS } from "./otp-rules";
 import { encryptText, keyedHash } from "./phone-crypto";
 import { getSmsSender, missingSmsKeys } from "./sms-provider.server";
-
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.user_phone_numbers (
-      user_id uuid primary key, phone_number_enc text not null, phone_hash text not null,
-      phone_last4 text not null, phone_verified boolean not null default false,
-      phone_verified_at timestamptz, updated_at timestamptz not null default now())`;
-    await sql`create table if not exists public.phone_otp_codes (
-      id uuid primary key default gen_random_uuid(), user_id uuid not null, phone_hash text not null,
-      phone_number_enc text not null, phone_last4 text not null, code_hash text not null,
-      attempts int not null default 0, expires_at timestamptz not null, consumed_at timestamptz,
-      created_at timestamptz not null default now())`;
-  }, "phone-otp");
-  return ready;
-}
 
 const secret = () => process.env["PHONE_ENCRYPTION_KEY"] ?? "";
 
@@ -29,7 +12,6 @@ export type PhoneStatus = { configured: boolean; verified: boolean; masked: stri
 export async function phoneStatus(userId: string): Promise<PhoneStatus> {
   const configured = missingSmsKeys().length === 0;
   try {
-    await ensure();
     const rows = (await sql`select phone_last4, phone_verified from public.user_phone_numbers
       where user_id = ${userId} limit 1`) as { phone_last4: string; phone_verified: boolean }[];
     const r = rows[0];
@@ -53,7 +35,6 @@ export async function requestPhoneCode(userId: string, phone: string, ip: string
     console.warn(`[phone] SMS not configured; missing ${missingSmsKeys().join(", ")}`);
     return { status: "not_configured" };
   }
-  await ensure();
   const phoneHash = await keyedHash(phone, secret());
   for (const [name, subject, rule] of [
     ["sms-user", userId, RATE_RULES.smsSendUser],
@@ -87,7 +68,6 @@ export async function requestPhoneCode(userId: string, phone: string, ip: string
 export type VerifyResult = { status: "verified"; masked: string } | { status: "expired" | "too_many_attempts" | "invalid" | "no_code" | "rate_limited" };
 
 export async function verifyPhoneCode(userId: string, code: string): Promise<VerifyResult> {
-  await ensure();
   const limit = await hitRateLimit("sms-verify", userId, RATE_RULES.smsVerify);
   if (!limit.ok) return { status: "rate_limited" };
   const rows = (await sql`select * from public.phone_otp_codes where user_id = ${userId} and consumed_at is null
@@ -114,7 +94,6 @@ export async function verifyPhoneCode(userId: string, code: string): Promise<Ver
 }
 
 export async function removePhone(userId: string): Promise<void> {
-  await ensure();
   await sql`delete from public.user_phone_numbers where user_id = ${userId}`;
   await sql`update public.phone_otp_codes set consumed_at = now() where user_id = ${userId} and consumed_at is null`;
 }
@@ -125,7 +104,6 @@ export async function removePhone(userId: string): Promise<void> {
  * only counts when it arrives from the same number it was issued for.
  */
 export async function confirmInboundCode(fromPhone: string, text: string): Promise<boolean> {
-  await ensure();
   const code = text.match(/\b(\d{6})\b/)?.[1];
   if (!code) return false;
   const phoneHash = await keyedHash(fromPhone, secret());
@@ -147,7 +125,6 @@ export type PendingPhoneVerification = { id: string; masked: string; createdAt: 
 
 /** Admin queue: open, unexpired phone codes (never exposes the number or code). */
 export async function listPendingPhoneVerifications(limit = 50): Promise<PendingPhoneVerification[]> {
-  await ensure();
   const rows = (await sql`select id, phone_last4, created_at, attempts from public.phone_otp_codes
     where consumed_at is null and expires_at > now() order by created_at desc limit ${limit}`) as Record<string, unknown>[];
   return rows.map((r) => ({
@@ -160,7 +137,6 @@ export async function listPendingPhoneVerifications(limit = 50): Promise<Pending
 
 /** Admin: consume an open code and mark the member's number verified. */
 export async function approvePhoneVerification(codeId: string): Promise<boolean> {
-  await ensure();
   const rows = (await sql`update public.phone_otp_codes set consumed_at = now()
     where id = ${codeId} and consumed_at is null and expires_at > now()
     returning user_id, phone_number_enc, phone_hash, phone_last4`) as Record<string, unknown>[];

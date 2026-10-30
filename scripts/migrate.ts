@@ -10,9 +10,9 @@
  * runtime role must never be used for DDL, and vice versa).
  */
 import { Pool } from "@neondatabase/serverless";
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checksumDrift, checksumOf, listMigrationFiles, migrationNumber, planMigrations } from "./migration-plan";
 
 const url = process.env["MIGRATION_URL"];
 if (!url) {
@@ -29,7 +29,7 @@ const dryRun = args.includes("--dry-run");
 const baseline = Number(args.find((a) => a.startsWith("--baseline="))?.split("=")[1] ?? NaN);
 
 const dir = join(import.meta.dir, "..", "db");
-const files = readdirSync(dir).filter((f) => /^\d+_.*\.sql$/.test(f)).sort();
+const files = listMigrationFiles(dir);
 const pool = new Pool({ connectionString: url });
 
 try {
@@ -42,28 +42,34 @@ try {
     ),
   );
 
-  for (const file of files) {
-    const body = readFileSync(join(dir, file), "utf8");
-    const checksum = createHash("sha256").update(body).digest("hex");
-    if (done.has(file)) {
-      if (done.get(file) !== checksum) console.warn(`! ${file} is gewijzigd na toepassen (niet opnieuw gedraaid).`);
-      continue;
-    }
-    const num = Number(file.split("_")[0]);
-    if (Number.isFinite(baseline) && num <= baseline) {
-      if (!dryRun) await pool.query(`insert into public.schema_migrations (filename, checksum) values ($1, $2)`, [file, checksum]);
+  const current = new Map(files.map((f) => [f, checksumOf(readFileSync(join(dir, f), "utf8"))]));
+  for (const file of checksumDrift([...done].map(([filename, checksum]) => ({ filename, checksum })), current)) {
+    console.warn(`! ${file} is gewijzigd na toepassen (niet opnieuw gedraaid).`);
+  }
+  const record = (file: string) =>
+    pool.query(`insert into public.schema_migrations (filename, checksum) values ($1, $2)`, [file, current.get(file)!]);
+
+  for (const { file, action } of planMigrations(files, new Set(done.keys()))) {
+    if (Number.isFinite(baseline) && migrationNumber(file) <= baseline) {
+      if (!dryRun) await record(file);
       console.log(`= baseline ${file}`);
       continue;
     }
     if (dryRun) {
-      console.log(`… pending ${file}`);
+      console.log(`… ${action === "run" ? "pending" : "record "} ${file}`);
       continue;
     }
+    if (action === "record") {
+      await record(file);
+      console.log(`= ${file} (recorded, covered by baseline)`);
+      continue;
+    }
+    const body = readFileSync(join(dir, file), "utf8");
     const client = await pool.connect();
     try {
       await client.query("begin");
       await client.query(body);
-      await client.query(`insert into public.schema_migrations (filename, checksum) values ($1, $2)`, [file, checksum]);
+      await client.query(`insert into public.schema_migrations (filename, checksum) values ($1, $2)`, [file, current.get(file)!]);
       await client.query("commit");
       console.log(`✓ ${file}`);
     } catch (error) {

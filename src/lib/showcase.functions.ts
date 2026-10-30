@@ -10,16 +10,15 @@ const handleSchema = z
   .transform((s) => s.replace(/^@/, "").replace(/^https?:\/\/(www\.)?rout\.be\//i, "").replace(/^u\//, "").toLowerCase())
   .pipe(z.string().regex(/^[a-z0-9._-]{1,64}$/));
 
-async function ensureTable() {
+async function db() {
   const { sql } = await import("@/lib/neon");
-  await sql`create table if not exists public.showcase_profiles (handle text primary key, position integer not null default 0, created_at timestamptz not null default now())`;
   return sql;
 }
 
 /** Public: handles to render as live phone previews. */
 export const listShowcaseHandles = createServerFn({ method: "GET" }).handler(async () => {
   try {
-    const sql = await ensureTable();
+    const sql = await db();
     const rows = (await sql`select handle from public.showcase_profiles order by position, created_at`) as { handle: string }[];
     return rows.length ? rows.map((r) => r.handle) : FALLBACK;
   } catch (e) {
@@ -35,7 +34,7 @@ export const saveShowcaseHandles = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertAdminRole } = await import("./admin.server");
     await assertAdminRole(context.userId);
-    const sql = await ensureTable();
+    const sql = await db();
     const unique = [...new Set(data.handles)];
     await sql`delete from public.showcase_profiles`;
     for (let i = 0; i < unique.length; i++) {

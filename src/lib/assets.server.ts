@@ -1,5 +1,4 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { assetStatus, retentionFor, withinQuota } from "@/lib/asset-retention";
 import {
   MAX_UPLOAD_BYTES,
@@ -15,26 +14,6 @@ import {
 
 type Row = Record<string, unknown>;
 
-let ensured = false;
-async function ensure() {
-  if (ensured) return;
-  await runSchemaEnsure(async () => {
-    await sql`create table if not exists public.user_assets (
-      id uuid primary key default gen_random_uuid(),
-      user_id uuid not null references public.users(id) on delete cascade,
-      bucket_kind text not null default 'client',
-      s3_key text not null,
-      file_name text not null,
-      file_size bigint not null default 0,
-      content_type text not null,
-      is_lifetime boolean not null default false,
-      expires_at timestamptz,
-      created_at timestamptz not null default now()
-    )`;
-  }, "user_assets");
-  ensured = true;
-}
-
 async function tierOf(userId: string) {
   const rows = (await sql`select verified, is_paid, tier from public.profiles where id = ${userId} limit 1`) as Row[];
   const r = rows[0] ?? {};
@@ -49,7 +28,6 @@ async function usage(userId: string) {
 }
 
 export async function listAssets(userId: string) {
-  await ensure();
   const [rows, tier, used] = await Promise.all([
     sql`select id, file_name, file_size, content_type, is_lifetime, expires_at, created_at, s3_key, bucket_kind
         from public.user_assets where user_id = ${userId} order by created_at desc limit 200` as Promise<Row[]>,
@@ -79,7 +57,6 @@ export async function listAssets(userId: string) {
 export const STORAGE_QUOTA_MESSAGE = "Opslaglimiet bereikt voor deze omgeving (Storage Quota Exceeded). Upgrade de workspace of upload in je persoonlijke omgeving.";
 
 export async function uploadAsset(input: { userId: string; bytes: Uint8Array; fileName: string; days?: number }) {
-  await ensure();
   if (input.bytes.byteLength === 0) throw new Error("Het bestand is leeg.");
   // Scope quota first: a 0 MB scope is refused with the same answer whether or not storage is configured.
   const { checkActiveScopeUpload } = await import("./entitlement-engine.server");
@@ -117,7 +94,6 @@ export async function deleteAsset(userId: string, id: string) {
 }
 
 export async function purgeExpiredAssets() {
-  await ensure();
   const rows = (await sql`select id, s3_key, bucket_kind from public.user_assets
     where is_lifetime = false and expires_at < now() limit 500`) as Row[];
   let deletedCount = 0;

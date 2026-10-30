@@ -15,7 +15,11 @@
     "db:migrate": "bun ./scripts/migrate.ts",
     "db:migrate:dry": "bun ./scripts/migrate.ts --dry-run",
     "audit:brevo": "bun scripts/audit-brevo-templates.ts",
-    "docs:brevo": "bun scripts/audit-brevo-templates.ts --write"
+    "docs:brevo": "bun scripts/audit-brevo-templates.ts --write",
+    "db:migrate:gateway": "bun ./scripts/migrate-gateway.ts",
+    "db:snapshot": "bun ./scripts/schema-snapshot.ts",
+    "db:check": "bun ./scripts/schema-snapshot.ts --check",
+    "db:types": "bun ./scripts/schema-snapshot.ts --types"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -68,7 +72,6 @@
     "@streamdown/mermaid": "^1.0.2",
     "@stripe/react-stripe-js": "^7.0.0",
     "@stripe/stripe-js": "^10.1.0",
-    "@supabase/supabase-js": "^2.117.3",
     "@tabler/icons-react": "^3.44.0",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.101.1",
@@ -126,6 +129,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.13",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.26.5",
     "@neon/config": "^1.0.2",
@@ -137,8 +141,6 @@
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.21",
-    "drizzle-kit": "0.x",
-    "drizzle-orm": "0.x",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

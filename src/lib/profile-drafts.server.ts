@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { sql } from "@/lib/neon";
 import type { AliasProfileInput } from "@/lib/alias-profile.server";
 import type { StudioProfileInput } from "@/lib/studio-profile.server";
@@ -28,29 +27,6 @@ export type DraftMeta = {
 
 type Row = Record<string, unknown>;
 
-let tableReady: Promise<void> | null = null;
-async function ensureDraftTable(): Promise<void> {
-  tableReady ??= runSchemaEnsure(async () => {
-    await sql`
-      create table if not exists public.profile_drafts (
-        user_id uuid not null references public.profiles(id) on delete cascade,
-        space text not null check (space in ('verified', 'alias')),
-        payload jsonb not null default '{}'::jsonb,
-        revision bigint not null default 1,
-        published_revision bigint not null default 0,
-        created_at timestamptz not null default now(),
-        updated_at timestamptz not null default now(),
-        published_at timestamptz,
-        primary key (user_id, space)
-      )
-    `;
-  }, "profile-drafts.server.ts").catch((error) => {
-    tableReady = null;
-    throw error;
-  });
-  return tableReady;
-}
-
 function rowMeta(row: Row): DraftMeta {
   const draftRevision = Number(row["revision"] ?? 0);
   const publishedRevision = Number(row["published_revision"] ?? 0);
@@ -68,7 +44,6 @@ export async function readOrCreateProfileDraft(
   space: ProfileSpace,
   livePayload: ProfileDraftPayload,
 ): Promise<{ payload: SerializableDraftPayload; meta: DraftMeta }> {
-  await ensureDraftTable();
   await sql`
     insert into public.profile_drafts (user_id, space, payload, revision, published_revision, published_at)
     values (${userId}, ${space}, ${JSON.stringify(livePayload)}::jsonb, 1, 1, now())
@@ -91,7 +66,6 @@ export async function readOrCreateProfileDraft(
 /** A standalone QR save publishes only the QR and patches the private draft.
  * Bumping its revision refuses any already-open editor's stale full-prefs write. */
 export async function savePublishedProfileQr(userId: string, style: ProfileQrStyle): Promise<void> {
-  await ensureDraftTable();
   const encoded = JSON.stringify(style);
   const results = await sql.transaction([
     sql`update public.profiles
@@ -119,7 +93,6 @@ export async function saveProfileDraft(
   payload: ProfileDraftPayload,
   expectedRevision: number,
 ): Promise<DraftMeta> {
-  await ensureDraftTable();
   try {
     const rows = (await sql.query(
       `select * from public.save_profile_draft($1::uuid, $2::text, $3::jsonb, $4::bigint)`,
@@ -140,7 +113,6 @@ export async function publishProfileDraft(
   space: ProfileSpace,
   expectedRevision: number,
 ): Promise<DraftMeta> {
-  await ensureDraftTable();
   try {
     const rows = (await sql.query(
       `select * from public.publish_profile_draft($1::uuid, $2::text, $3::bigint)`,

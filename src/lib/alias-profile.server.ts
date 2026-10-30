@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { hasProfilePro } from "./profile-entitlements";
 import { sql } from "@/lib/neon";
 import { isReservedHandle, normalizeHandle } from "@/lib/profile";
@@ -61,45 +60,7 @@ function toAliasProfile(row: Row): AliasProfile {
   };
 }
 
-/**
- * Zorgt dat `public.alias_profiles` bestaat (migratie 38). Zo lukt het aanmaken
- * van een eigen profielpagina ook op databases waar de migratie nog niet is
- * uitgevoerd — anders faalde het opslaan met "relation does not exist".
- */
-let tableReady: Promise<void> | null = null;
-async function ensureAliasTable(): Promise<void> {
-  tableReady ??= runSchemaEnsure(async () => {
-    await sql`
-      create table if not exists public.alias_profiles (
-        user_id        uuid primary key references public.profiles(id) on delete cascade,
-        handle         text not null,
-        display_name   text,
-        tagline        text,
-        bio            text,
-        avatar_url     text,
-        favicon_url    text,
-        theme          text not null default 'noir',
-        card_style     text not null default 'bordered',
-        blocks         jsonb not null default '[]'::jsonb,
-        display_prefs  jsonb not null default '{}'::jsonb,
-        enabled        boolean not null default true,
-        created_at     timestamptz not null default now(),
-        updated_at     timestamptz not null default now()
-      )
-    `;
-    await sql`
-      create unique index if not exists alias_profiles_handle_ci_key
-        on public.alias_profiles (lower(handle))
-    `;
-  }, "alias-profile.server.ts").catch((error) => {
-    tableReady = null;
-    throw error;
-  });
-  return tableReady;
-}
-
 export async function readAliasProfile(userId: string): Promise<AliasProfile | null> {
-  await ensureAliasTable();
   // Ook de rootgegevens meelezen: de Studio moet weten dat dit aliasprofiel bij
   // een geverifieerd account hoort (mens-badge, Pro-opties, tweede adres).
   const rows = (await sql`
@@ -147,7 +108,6 @@ export async function isAliasHandleFree(rawHandle: string, userId: string | null
   const handle = normalizeHandle(rawHandle);
   if (!handle) return { ok: false, reason: "invalid" as const };
   if (isReservedHandle(handle)) return { ok: false, reason: "reserved" as const };
-  await ensureAliasTable();
 
   const { isHandleAvailableFor } = await import("./handle-namespace.server");
   if (!(await isHandleAvailableFor(handle, userId)))
@@ -157,7 +117,6 @@ export async function isAliasHandleFree(rawHandle: string, userId: string | null
 }
 
 export async function writeAliasProfile(userId: string, input: AliasProfileInput) {
-  await ensureAliasTable();
   const handle = normalizeHandleForStorage(input.username);
   if (!handle) throw new Error("handle_invalid");
   // Serverzijde spiegel van de aliasregel: minstens 5 tekens én 2 cijfers.
@@ -205,7 +164,6 @@ export async function writeAliasProfile(userId: string, input: AliasProfileInput
 export async function readPublicAliasProfile(rawHandle: string) {
   const handle = normalizeHandle(rawHandle);
   if (!handle) return null;
-  await ensureAliasTable();
   const rows = (await sql`
     select a.user_id as id, a.handle as username, a.display_name, a.tagline, a.bio, a.profile_descriptions,
            a.avatar_url, a.favicon_url, a.theme, a.card_style, a.blocks,
@@ -256,7 +214,6 @@ export async function ensureFreeAliasProfile(
   opts: { preferred?: string | null; seed?: string | null } = {},
 ): Promise<{ handle: string | null; created: boolean }> {
   try {
-    await ensureAliasTable();
 
     const mine = (await sql`
       select handle from public.alias_profiles where user_id = ${userId} limit 1
@@ -328,7 +285,6 @@ export async function preserveFreeAliasHandle(
   if (isReservedHandle(handle)) return { ok: false, handle: null };
 
   try {
-    await ensureAliasTable();
 
     const mine = (await sql`
       select handle from public.alias_profiles where user_id = ${userId} limit 1

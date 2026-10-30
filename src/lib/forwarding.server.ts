@@ -80,36 +80,6 @@ const RATE_LIMITS = {
   perRecipientPerDay: 2,
 } as const;
 
-let rateTableReady: Promise<void> | null = null;
-async function ensureRateTable(): Promise<void> {
-  rateTableReady ??= (async () => {
-    const { runSchemaEnsure } = await import("@/lib/db/schema-ensure.server");
-    const { sql } = await import("@/lib/neon");
-    await runSchemaEnsure(async () => {
-      await sql`
-        create table if not exists public.forwarding_confirmation_sends (
-          id         bigint generated always as identity primary key,
-          user_id    uuid not null references public.profiles(id) on delete cascade,
-          recipient  text not null,
-          sent_at    timestamptz not null default now()
-        )
-      `;
-      await sql`
-        create index if not exists fwd_conf_sends_user_idx
-          on public.forwarding_confirmation_sends (user_id, sent_at)
-      `;
-      await sql`
-        create index if not exists fwd_conf_sends_recipient_idx
-          on public.forwarding_confirmation_sends (lower(recipient), sent_at)
-      `;
-    }, "forwarding.server.ts");
-  })().catch((error) => {
-    rateTableReady = null;
-    throw error;
-  });
-  return rateTableReady;
-}
-
 /**
  * Controleert alle drie de grenzen en logt de verzending bij toestemming.
  * Geeft `null` terug wanneer de mail verstuurd mag worden, anders de reden.
@@ -121,7 +91,6 @@ async function checkAndRecordSend(
   recipient: string,
 ): Promise<"rate_limited_user" | "rate_limited_recipient" | "unavailable" | null> {
   try {
-    await ensureRateTable();
     const { sql } = await import("@/lib/neon");
 
     const counts = (await sql`

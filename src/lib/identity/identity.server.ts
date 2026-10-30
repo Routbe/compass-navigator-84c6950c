@@ -1,16 +1,5 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { DIDIT_MONTHLY_LIMIT, monthKey, normalizeRealName, type IdentityProvider } from "./identity-rules";
-
-let ready: Promise<void> | null = null;
-function ensure() {
-  // Safety net only; db/81 is the source of truth (enum + immutability trigger).
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.didit_monthly_usage (
-      month date primary key, success_count integer not null default 0)`;
-  }, "identity");
-  return ready;
-}
 
 /** Server-side pepper; ruwe provider-ID's worden nooit opgeslagen. */
 function pepper(): string {
@@ -36,7 +25,6 @@ export function providerConfigured(provider: IdentityProvider): boolean {
 }
 
 export async function diditSuccessCount(): Promise<number> {
-  await ensure();
   const rows = (await sql`select success_count from public.didit_monthly_usage where month = ${monthKey()}`) as { success_count: number }[];
   return Number(rows[0]?.success_count ?? 0);
 }
@@ -84,7 +72,6 @@ export async function completeVerification(input: {
   rawHumanId: string;
   realName: string;
 }): Promise<CompleteResult> {
-  await ensure();
   const name = normalizeRealName(input.realName);
   if (!name) return { ok: false, reason: "invalid_name" };
   const humanId = await hashHumanId(input.provider, input.rawHumanId);
