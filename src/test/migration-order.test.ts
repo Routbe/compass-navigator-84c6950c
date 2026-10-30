@@ -39,7 +39,7 @@ describe("migration order (F1)", () => {
 
   it("only migration files live in db/ next to the snapshot, seed and docs", () => {
     const stray = readdirSync(DB_DIR).filter(
-      (f) => !/^\d+_.*\.sql$/.test(f) && !["schema.snapshot.json", "baseline-seed.sql", "docs", "sql"].includes(f),
+      (f) => !/^\d+_.*\.sql$/.test(f) && !["schema.snapshot.json", "baseline-seed.sql"].includes(f),
     );
     expect(stray).toEqual([]);
   });
