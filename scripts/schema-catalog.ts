@@ -273,6 +273,19 @@ export function catalogJson(catalog: Catalog): string {
   return `${JSON.stringify(catalog, null, 2)}\n`;
 }
 
+/**
+ * Comparable form of a CHECK definition. Postgres versions deparse the same
+ * AND chain with different grouping (`((a AND b) AND c)` vs `(a AND b AND c)`),
+ * so grouping parentheses are ignored when comparing check constraints.
+ */
+export function canonicalCheck(def: string): string {
+  return def.replace(/[()]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function comparable(c: Constraint): Constraint {
+  return c.kind === "c" ? { ...c, def: canonicalCheck(c.def) } : c;
+}
+
 /** Human-readable differences between two catalogs (empty = identical). */
 export function diffCatalogs(expected: Catalog, actual: Catalog): string[] {
   const out: string[] = [];
@@ -302,7 +315,7 @@ export function diffCatalogs(expected: Catalog, actual: Catalog): string[] {
       continue;
     }
     cmp(`column ${name}`, t.columns, u.columns, (c) => c.name);
-    cmp(`constraint ${name}`, t.constraints, u.constraints, (c) => c.name);
+    cmp(`constraint ${name}`, t.constraints.map(comparable), u.constraints.map(comparable), (c) => c.name);
     cmp(`index ${name}`, t.indexes, u.indexes, (x) => x);
     cmp(`trigger ${name}`, t.triggers, u.triggers, (x) => x);
     cmp(`policy ${name}`, t.policies, u.policies, (p) => p.name);
