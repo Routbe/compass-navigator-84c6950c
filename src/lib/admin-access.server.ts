@@ -394,15 +394,6 @@ export async function setUserVerified(opts: {
   const first = (opts.firstName ?? "").trim();
   const last = (opts.lastName ?? "").trim();
 
-  // De naamkolommen bestaan niet op elke database — anders faalde het
-  // verifiëren met "column does not exist" in plaats van een nette melding.
-  await sql`
-    alter table public.profiles
-      add column if not exists legal_first_name text,
-      add column if not exists legal_last_name text,
-      add column if not exists verified_legal_name text
-  `.catch(() => undefined);
-
   if (first || last) {
     await sql`
       update public.profiles

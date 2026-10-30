@@ -3,8 +3,6 @@ import { sql } from "@/lib/neon";
 import { writeAudit } from "./admin.server";
 import { claimState } from "./stamp-rules";
 
-/** Safety net for db/92 when migrations have not run yet. */
-
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
 

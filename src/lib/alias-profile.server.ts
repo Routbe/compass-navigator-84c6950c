@@ -60,12 +60,6 @@ function toAliasProfile(row: Row): AliasProfile {
   };
 }
 
-/**
- * Zorgt dat `public.alias_profiles` bestaat (migratie 38). Zo lukt het aanmaken
- * van een eigen profielpagina ook op databases waar de migratie nog niet is
- * uitgevoerd — anders faalde het opslaan met "relation does not exist".
- */
-
 export async function readAliasProfile(userId: string): Promise<AliasProfile | null> {
   // Ook de rootgegevens meelezen: de Studio moet weten dat dit aliasprofiel bij
   // een geverifieerd account hoort (mens-badge, Pro-opties, tweede adres).
