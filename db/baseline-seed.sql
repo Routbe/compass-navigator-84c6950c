@@ -19,6 +19,3 @@ values
    ],
    array['openid', 'profile', 'email'], 'active', true, 'production')
 on conflict (client_id) do nothing;
-
-insert into public.showcase_profiles (handle, position) values ('maximilien.brussels', 0)
-on conflict (handle) do nothing;
