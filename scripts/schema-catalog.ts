@@ -187,7 +187,8 @@ export async function readCatalog(exec: Exec): Promise<Catalog> {
              where n.nspname in (${S}) and r.rolname in (${R})`),
     ]);
 
-  const tableList: Table[] = tables.map((t) => {
+  // The migration ledger belongs to the runners, not to the schema.
+  const tableList: Table[] = tables.filter((t) => key(t["schema"], t["name"]) !== "public.schema_migrations").map((t) => {
     const k = key(t["schema"], t["name"]);
     return {
       schema: String(t["schema"]),
