@@ -11,6 +11,11 @@ import { readdirSync } from "node:fs";
 
 export const MIGRATION_FILE_RE = /^(\d+)_[^/]*\.sql$/;
 
+/** Squashed baseline: applied only on an empty database, see planMigrations. */
+export const BASELINE_FILE = "0000_baseline.sql";
+/** Highest migration number the baseline already contains. */
+export const BASELINE_COVERS = 110;
+
 /** First number from which prefixes must be unique (older files are immutable). */
 export const UNIQUE_PREFIX_FROM = 111;
 
@@ -32,6 +37,32 @@ export function orderMigrationFiles(names: readonly string[]): string[] {
 
 export function listMigrationFiles(dir: string): string[] {
   return orderMigrationFiles(readdirSync(dir));
+}
+
+export type MigrationStep = { file: string; action: "run" | "record" };
+
+/**
+ * What to do with each file. On an empty database (nothing applied) the
+ * baseline runs and the files it covers are only recorded; on an existing
+ * database the baseline is only recorded and pending files run as usual.
+ */
+export function planMigrations(files: readonly string[], applied: ReadonlySet<string>): MigrationStep[] {
+  const ordered = orderMigrationFiles(files);
+  const hasBaseline = ordered.includes(BASELINE_FILE);
+  const steps: MigrationStep[] = [];
+  if (hasBaseline && applied.size === 0) {
+    steps.push({ file: BASELINE_FILE, action: "run" });
+    for (const file of ordered) {
+      if (file === BASELINE_FILE) continue;
+      steps.push({ file, action: migrationNumber(file) <= BASELINE_COVERS ? "record" : "run" });
+    }
+    return steps;
+  }
+  for (const file of ordered) {
+    if (applied.has(file)) continue;
+    steps.push({ file, action: file === BASELINE_FILE ? "record" : "run" });
+  }
+  return steps;
 }
 
 export function checksumOf(body: string): string {

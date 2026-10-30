@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { checksumDrift, checksumOf, listMigrationFiles, splitSql } from "./migration-plan";
+import { checksumDrift, checksumOf, listMigrationFiles, planMigrations, splitSql } from "./migration-plan";
 
 const URL_ = "https://connector-gateway.lovable.dev/neon/sql";
 async function q(body: unknown): Promise<any> {
@@ -37,16 +37,24 @@ const done = new Set(applied.map((r) => r.filename));
 const current = new Map(files.map((f) => [f, checksumOf(readFileSync(join(dir, f), "utf8"))]));
 for (const file of checksumDrift(applied, current)) console.warn(`! ${file} is gewijzigd na toepassen (niet opnieuw gedraaid).`);
 
-for (const file of files) {
-  if (done.has(file)) continue;
-  if (dryRun) { console.log(`… pending ${file}`); continue; }
-  const body = readFileSync(join(dir, file), "utf8");
-  const checksum = current.get(file)!;
+const record = (file: string) => ({
+  query: "insert into public.schema_migrations (filename, checksum) values ($1, $2)",
+  params: [file, current.get(file)!],
+});
+for (const step of planMigrations(files, done)) {
+  const { file } = step;
+  if (dryRun) {
+    console.log(`… ${step.action === "run" ? "pending" : "record "} ${file}`);
+    continue;
+  }
   try {
-    await q({ queries: [
-      ...splitSql(body).map((query) => ({ query, params: [] })),
-      { query: "insert into public.schema_migrations (filename, checksum) values ($1, $2)", params: [file, checksum] },
-    ] });
+    if (step.action === "record") {
+      await q({ queries: [record(file)] });
+      console.log(`= ${file} (recorded, covered by baseline)`);
+      continue;
+    }
+    const body = readFileSync(join(dir, file), "utf8");
+    await q({ queries: [...splitSql(body).map((query) => ({ query, params: [] })), record(file)] });
     console.log(`✓ ${file}`);
   } catch (e) {
     console.error(`✗ ${file}: ${e instanceof Error ? e.message : e}`);
