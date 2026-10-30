@@ -1,25 +1,9 @@
 /** Anonymous Q&A storage (db/94). Server-only. No IP or author is ever stored with a question. */
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { ANSWER_MAX, QUESTION_MAX, normalizeText } from "./questions-rules";
 
 type Row = Record<string, unknown>;
 export type Question = { id: string; body: string; answer: string | null; published: boolean; createdAt: string; answeredAt: string | null };
-
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.profile_questions (
-      id uuid primary key default gen_random_uuid(),
-      owner_id uuid not null references public.users(id) on delete cascade,
-      body text not null check (char_length(body) between 1 and 300),
-      answer text check (answer is null or char_length(answer) between 1 and 1000),
-      published boolean not null default false,
-      created_at timestamptz not null default now(),
-      answered_at timestamptz)`;
-  }, "profile-questions");
-  return ready;
-}
 
 const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
 function toQ(r: Row): Question {
@@ -45,7 +29,6 @@ async function publicOwnerId(handle: string): Promise<string | null> {
 }
 
 export async function publishedQuestions(handle: string): Promise<Question[]> {
-  await ensure();
   const owner = await publicOwnerId(handle);
   if (!owner) return [];
   const rows = (await sql`select id, body, answer, published, created_at, answered_at from public.profile_questions
@@ -56,7 +39,6 @@ export async function publishedQuestions(handle: string): Promise<Question[]> {
 export async function askQuestion(handle: string, raw: string): Promise<"ok" | "invalid" | "not_found"> {
   const body = normalizeText(raw, QUESTION_MAX);
   if (!body) return "invalid";
-  await ensure();
   const owner = await publicOwnerId(handle);
   if (!owner) return "not_found";
   await sql`insert into public.profile_questions (owner_id, body) values (${owner}, ${body})`;
@@ -64,7 +46,6 @@ export async function askQuestion(handle: string, raw: string): Promise<"ok" | "
 }
 
 export async function myQuestions(ownerId: string): Promise<Question[]> {
-  await ensure();
   const rows = (await sql`select id, body, answer, published, created_at, answered_at from public.profile_questions
      where owner_id = ${ownerId} order by created_at desc limit 200`) as Row[];
   return rows.map(toQ);

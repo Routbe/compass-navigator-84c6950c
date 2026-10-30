@@ -1,5 +1,4 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import {
   countsTowardsReach,
   isAutoReachProvider,
@@ -18,23 +17,10 @@ import {
 type Row = Record<string, unknown>;
 const TIMEOUT = 6000;
 
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`alter table public.user_integrations
-      add column if not exists include_in_reach boolean not null default true,
-      add column if not exists follower_count integer,
-      add column if not exists manual_follower_count integer,
-      add column if not exists reach_synced_at timestamptz`;
-  }, "integration_reach");
-  return ready;
-}
-
 const iso = (v: unknown) => (!v ? null : v instanceof Date ? v.toISOString() : String(v));
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
 async function readAccounts(userId: string): Promise<ReachAccount[]> {
-  await ensure();
   const rows = (await sql`
     select provider, handle, include_in_reach, follower_count, manual_follower_count, reach_synced_at
       from public.user_integrations where user_id = ${userId} order by created_at`) as Row[];
@@ -76,7 +62,6 @@ export type ReachSettingsInput = {
 };
 
 export async function saveReachSettings(userId: string, input: ReachSettingsInput): Promise<ReachSettings> {
-  await ensure();
   if (typeof input.showTotalReach === "boolean") {
     await sql`update public.profiles set show_total_reach = ${input.showTotalReach} where id = ${userId}`;
   }

@@ -11,26 +11,6 @@ import { DEFAULT_PRICING, sanitizePricing, type PricingSettings } from "./pricin
 
 const CACHE_MS = 60_000;
 let cache: { value: PricingSettings; at: number } | null = null;
-let tableReady = false;
-
-async function ensureTable(): Promise<void> {
-  if (tableReady) return;
-  await sql`
-    create table if not exists public.pricing_settings (
-      id int primary key default 1,
-      verification_base_cents int not null default 399,
-      fee_card_cents int not null default 999,
-      fee_bunq_cents int not null default 499,
-      fee_sepa_cents int not null default 0,
-      min_donation_cents int not null default 100,
-      updated_at timestamptz not null default now(),
-      updated_by uuid,
-      constraint pricing_settings_single_row check (id = 1)
-    )
-  `;
-  await sql`insert into public.pricing_settings (id) values (1) on conflict (id) do nothing`;
-  tableReady = true;
-}
 
 type Row = Record<string, unknown>;
 
@@ -38,7 +18,6 @@ type Row = Record<string, unknown>;
 export async function getPricing(force = false): Promise<PricingSettings> {
   if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.value;
   try {
-    await ensureTable();
     const rows = (await sql`
       select verification_base_cents, fee_card_cents, fee_bunq_cents, fee_sepa_cents, min_donation_cents
         from public.pricing_settings where id = 1 limit 1
@@ -71,7 +50,6 @@ export async function savePricing(
   updatedBy: string | null,
 ): Promise<PricingSettings> {
   const value = sanitizePricing(input);
-  await ensureTable();
   await sql`
     insert into public.pricing_settings
       (id, verification_base_cents, fee_card_cents, fee_bunq_cents, fee_sepa_cents, min_donation_cents, updated_at, updated_by)

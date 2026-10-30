@@ -1,4 +1,3 @@
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 /**
  * Whitelist-flow voor influencer- en bedrijfsverificatie.
  * Beheerder keurt specifieke namen goed → gebruiker claimt er één.
@@ -8,31 +7,9 @@ import { sql } from "@/lib/neon";
 import { canClaim, pickApproved, type WhitelistEntry } from "./approved-handles";
 
 type Row = Record<string, unknown>;
-let ready = false;
-
-async function ensureTable() {
-  if (ready) return;
-  await runSchemaEnsure(async () => {
-  await sql`
-    create table if not exists public.approved_handles (
-      id uuid primary key default gen_random_uuid(),
-      user_id uuid not null,
-      request_id uuid not null,
-      request_kind text not null,
-      handle text not null,
-      status text not null default 'approved',
-      created_at timestamptz not null default now(),
-      claimed_at timestamptz
-    )`;
-  await sql`create unique index if not exists approved_handles_user_handle_idx
-    on public.approved_handles (user_id, lower(handle))`;
-  }, "approved-handles.server.ts");
-  ready = true;
-}
 
 /** Stores an admin-chosen allowed list (direct grant, no request). Voids older open entries. */
 export async function storeAllowedHandles(userId: string, kind: string, handles: string[]) {
-  await ensureTable();
   const requestId = crypto.randomUUID();
   await sql`update public.approved_handles set status = 'void' where user_id = ${userId} and status = 'approved'`;
   for (const handle of handles) {
@@ -55,7 +32,6 @@ export async function approveWithWhitelist(
   adminId: string,
   approved: string[],
 ) {
-  await ensureTable();
   const rows = (kind === "influencer"
     ? await sql`select * from public.influencer_requests where id = ${requestId} limit 1`
     : await sql`select * from public.business_verifications where id = ${requestId} limit 1`) as Row[];
@@ -102,7 +78,6 @@ export async function notifyRejected(userId: string, kind: "influencer" | "busin
 }
 
 export async function myApprovedHandles(userId: string): Promise<WhitelistEntry[]> {
-  await ensureTable();
   const rows = (await sql`select handle, status from public.approved_handles
     where user_id = ${userId} and status <> 'void' order by created_at`) as Row[];
   return rows.map((r) => ({ handle: String(r["handle"]), status: r["status"] as WhitelistEntry["status"] }));

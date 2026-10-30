@@ -1,17 +1,7 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { hitRateLimit, sha256Hex } from "@/lib/rate-limit-db.server";
 
 /** 6-digit code that redeems the same magic link (db/72). */
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.login_codes (
-      id bigserial primary key, email_hash text not null, code_hash text not null,
-      link text not null, expires_at timestamptz not null, created_at timestamptz not null default now())`;
-  }, "login-codes");
-  return ready;
-}
 
 export const LOGIN_CODE_TTL_SEC = 15 * 60;
 
@@ -25,7 +15,6 @@ const norm = (email: string) => email.trim().toLowerCase();
 /** Stores the code; returns it, or null when storing failed (mail then carries only the link). */
 export async function issueLoginCode(email: string, link: string): Promise<string | null> {
   try {
-    await ensure();
     const code = newLoginCode();
     const e = await sha256Hex(norm(email));
     await sql`delete from public.login_codes where email_hash = ${e} or expires_at < now()`;
@@ -48,7 +37,6 @@ export async function redeemLoginCode(
   if (clean.length !== 6 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm(email))) return { ok: false, reason: "invalid" };
   const limit = await hitRateLimit("login-code", norm(email), { limit: 5, windowSec: 600 });
   if (!limit.ok) return { ok: false, reason: "rate_limited" };
-  await ensure();
   const e = await sha256Hex(norm(email));
   const rows = (await sql`delete from public.login_codes
     where email_hash = ${e} and code_hash = ${await sha256Hex(`${e}:${clean}`)} and expires_at > now()

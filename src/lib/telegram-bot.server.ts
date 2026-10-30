@@ -1,5 +1,4 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { decryptText, encryptText } from "@/lib/phone/phone-crypto";
 
 const secret = () => process.env["PHONE_ENCRYPTION_KEY"] ?? "";
@@ -19,17 +18,7 @@ export async function telegramSend(botToken: string, chatId: number, text: strin
   if (!res.ok) console.warn(`[telegram] sendMessage failed [${res.status}]`);
 }
 
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.telegram_verify_sessions (
-      chat_id bigint primary key, phone_enc text not null, expires_at timestamptz not null)`;
-  }, "telegram-verify");
-  return ready;
-}
-
 export async function rememberContact(chatId: number, phone: string) {
-  await ensure();
   const enc = await encryptText(phone, secret());
   await sql`insert into public.telegram_verify_sessions (chat_id, phone_enc, expires_at)
     values (${chatId}, ${enc}, now() + interval '15 minutes')
@@ -37,7 +26,6 @@ export async function rememberContact(chatId: number, phone: string) {
 }
 
 export async function contactFor(chatId: number): Promise<string | null> {
-  await ensure();
   const rows = (await sql`select phone_enc from public.telegram_verify_sessions
     where chat_id = ${chatId} and expires_at > now() limit 1`) as { phone_enc: string }[];
   return rows[0] ? decryptText(rows[0].phone_enc, secret()) : null;

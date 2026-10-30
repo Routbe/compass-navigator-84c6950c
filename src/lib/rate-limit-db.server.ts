@@ -1,5 +1,4 @@
 import { sql } from "@/lib/neon";
-import { runSchemaEnsure } from "@/lib/db/schema-ensure.server";
 import { decideRateLimit, windowStartMs, type RateRule } from "@/lib/rate-limit-rules";
 
 /**
@@ -7,15 +6,6 @@ import { decideRateLimit, windowStartMs, type RateRule } from "@/lib/rate-limit-
  * A database failure lets the request through with a warning: a broken
  * counter must never lock everybody out of sign-in.
  */
-let ready: Promise<void> | null = null;
-function ensure() {
-  ready ??= runSchemaEnsure(async () => {
-    await sql`create table if not exists public.rate_limits (
-      bucket text not null, window_start timestamptz not null, hits int not null default 0,
-      primary key (bucket, window_start))`;
-  }, "rate-limits");
-  return ready;
-}
 
 export async function sha256Hex(value: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -25,7 +15,6 @@ export async function sha256Hex(value: string): Promise<string> {
 export async function hitRateLimit(name: string, subject: string, rule: RateRule) {
   const now = Date.now();
   try {
-    await ensure();
     const bucket = `${name}:${await sha256Hex(subject)}`;
     const start = new Date(windowStartMs(now, rule.windowSec)).toISOString();
     const rows = (await sql`insert into public.rate_limits (bucket, window_start, hits)
