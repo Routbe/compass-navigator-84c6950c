@@ -36,8 +36,12 @@ describe("signing key rotation", () => {
     expect(rotationReason(key({ createdAt: ago(90 * DAY) }), "fp", now)).toBe("expired");
   });
 
-  it("rotates when the key-encryption key changed", () => {
-    expect(rotationReason(key({ kekFingerprint: "old" }), "fp", now)).toBe("kek_changed");
+  it("rotates when the key-encryption key changed and the key is at least an hour old", () => {
+    expect(rotationReason(key({ kekFingerprint: "old", createdAt: ago(60 * 60 * 1000) }), "fp", now)).toBe("kek_changed");
+  });
+
+  it("refuses to replace a key sealed under another KEK within the hour (two deployments, two KEKs)", () => {
+    expect(rotationReason(key({ kekFingerprint: "other", createdAt: ago(59 * 60 * 1000) }), "fp", now)).toBe("kek_conflict");
   });
 
   it("never auto-rotates a legacy plaintext key (sealing is an explicit step)", () => {

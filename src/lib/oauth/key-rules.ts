@@ -27,7 +27,14 @@ export type SigningKeyMeta = {
   kekFingerprint: string | null;
 };
 
-export type RotationReason = "missing" | "expired" | "kek_changed";
+/**
+ * A key sealed under another KEK is replaced only when it is at least this old.
+ * A younger one means two deployments use different KEKs on one database; they
+ * must not keep replacing each other's key.
+ */
+export const KEK_SWITCH_MIN_AGE_MS = 60 * 60 * 1000;
+
+export type RotationReason = "missing" | "expired" | "kek_changed" | "kek_conflict";
 
 /** Newest usable key: not retired, not revoked, with a private part. */
 export function activeSigningKey<T extends SigningKeyMeta>(keys: readonly T[]): T | null {
@@ -50,7 +57,9 @@ export function rotationReason(
   if (!active) return "missing";
   if (active.storage === "legacy_plaintext") return null;
   if (now.getTime() - active.createdAt.getTime() >= KEY_MAX_AGE_MS) return "expired";
-  if (active.kekFingerprint !== currentKekFingerprint) return "kek_changed";
+  if (active.kekFingerprint !== currentKekFingerprint) {
+    return now.getTime() - active.createdAt.getTime() >= KEK_SWITCH_MIN_AGE_MS ? "kek_changed" : "kek_conflict";
+  }
   return null;
 }
 

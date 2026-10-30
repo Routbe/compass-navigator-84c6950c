@@ -124,6 +124,12 @@ export async function activeKey(now = new Date()): Promise<ActiveKey> {
   let keys = await loadKeys();
   let active = activeSigningKey(keys);
   const reason = rotationReason(active, fingerprint, now);
+  if (reason === "kek_conflict") {
+    console.error(
+      "[oidc-keys] KEK mismatch: the active signing key was sealed less than an hour ago with a different ROUT_PROVIDER_SIGNING_KEK. Use one value on every deployment.",
+    );
+    throw new Error("Ondertekensleutel is verzegeld met een andere sleutel (ROUT_PROVIDER_SIGNING_KEK verschilt tussen omgevingen).");
+  }
   if (reason) {
     await rotateSigningKey(reason);
     keys = await loadKeys();
