@@ -10,9 +10,9 @@
  * runtime role must never be used for DDL, and vice versa).
  */
 import { Pool } from "@neondatabase/serverless";
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checksumOf, listMigrationFiles, migrationNumber } from "./migration-plan";
 
 const url = process.env["MIGRATION_URL"];
 if (!url) {
@@ -29,7 +29,7 @@ const dryRun = args.includes("--dry-run");
 const baseline = Number(args.find((a) => a.startsWith("--baseline="))?.split("=")[1] ?? NaN);
 
 const dir = join(import.meta.dir, "..", "db");
-const files = readdirSync(dir).filter((f) => /^\d+_.*\.sql$/.test(f)).sort();
+const files = listMigrationFiles(dir);
 const pool = new Pool({ connectionString: url });
 
 try {
@@ -44,12 +44,12 @@ try {
 
   for (const file of files) {
     const body = readFileSync(join(dir, file), "utf8");
-    const checksum = createHash("sha256").update(body).digest("hex");
+    const checksum = checksumOf(body);
     if (done.has(file)) {
       if (done.get(file) !== checksum) console.warn(`! ${file} is gewijzigd na toepassen (niet opnieuw gedraaid).`);
       continue;
     }
-    const num = Number(file.split("_")[0]);
+    const num = migrationNumber(file);
     if (Number.isFinite(baseline) && num <= baseline) {
       if (!dryRun) await pool.query(`insert into public.schema_migrations (filename, checksum) values ($1, $2)`, [file, checksum]);
       console.log(`= baseline ${file}`);

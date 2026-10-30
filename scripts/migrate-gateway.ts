@@ -6,9 +6,9 @@
  *   bun scripts/migrate-gateway.ts            apply pending
  *   bun scripts/migrate-gateway.ts --dry-run  list pending
  */
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checksumDrift, checksumOf, listMigrationFiles, splitSql } from "./migration-plan";
 
 const URL_ = "https://connector-gateway.lovable.dev/neon/sql";
 async function q(body: unknown): Promise<any> {
@@ -26,32 +26,24 @@ async function q(body: unknown): Promise<any> {
   return JSON.parse(text);
 }
 
-/** Split on top-level semicolons, respecting $$-quoted bodies, strings and -- comments. */
-export function splitSql(src: string): string[] {
-  const out: string[] = [];
-  let cur = "", i = 0, dollar = false, str = false;
-  while (i < src.length) {
-    const c = src[i]!, two = src.slice(i, i + 2);
-    if (!dollar && !str && two === "--") { const e = src.indexOf("\n", i); i = e < 0 ? src.length : e; continue; }
-    if (!str && two === "$$") { dollar = !dollar; cur += two; i += 2; continue; }
-    if (!dollar && c === "'") str = !str;
-    if (!dollar && !str && c === ";") { if (cur.trim()) out.push(cur.trim()); cur = ""; i++; continue; }
-    cur += c; i++;
-  }
-  if (cur.trim()) out.push(cur.trim());
-  return out;
-}
+export { splitSql };
 
 const dryRun = process.argv.includes("--dry-run");
 const dir = join(import.meta.dir, "..", "db");
-const files = readdirSync(dir).filter((f) => /^\d+_.*\.sql$/.test(f)).sort();
-const done = new Set<string>((await q({ query: "select filename from public.schema_migrations", params: [] })).rows.map((r: any) => r.filename));
+const files = listMigrationFiles(dir);
+const applied = (await q({ query: "select filename, checksum from public.schema_migrations", params: [] })).rows as {
+  filename: string;
+  checksum: string;
+}[];
+const done = new Set(applied.map((r) => r.filename));
+const current = new Map(files.map((f) => [f, checksumOf(readFileSync(join(dir, f), "utf8"))]));
+for (const file of checksumDrift(applied, current)) console.warn(`! ${file} is gewijzigd na toepassen (niet opnieuw gedraaid).`);
 
 for (const file of files) {
   if (done.has(file)) continue;
   if (dryRun) { console.log(`… pending ${file}`); continue; }
   const body = readFileSync(join(dir, file), "utf8");
-  const checksum = createHash("sha256").update(body).digest("hex");
+  const checksum = current.get(file)!;
   try {
     await q({ queries: [
       ...splitSql(body).map((query) => ({ query, params: [] })),
