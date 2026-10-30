@@ -30,7 +30,7 @@ export type SigningKeyMeta = {
 export type RotationReason = "missing" | "expired" | "kek_changed";
 
 /** Newest usable key: not retired, not revoked, with a private part. */
-export function activeSigningKey(keys: readonly SigningKeyMeta[]): SigningKeyMeta | null {
+export function activeSigningKey<T extends SigningKeyMeta>(keys: readonly T[]): T | null {
   const usable = keys
     .filter((k) => !k.retiredAt && !k.revokedAt && k.storage !== "none")
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -55,7 +55,7 @@ export function rotationReason(
 }
 
 /** Keys whose public half belongs in the JWKS. */
-export function publishedKeys(keys: readonly SigningKeyMeta[], now: Date): SigningKeyMeta[] {
+export function publishedKeys<T extends SigningKeyMeta>(keys: readonly T[], now: Date): T[] {
   return keys.filter(
     (k) => !k.revokedAt && (!k.retiredAt || now.getTime() - k.retiredAt.getTime() < RETIRED_KEY_GRACE_MS),
   );

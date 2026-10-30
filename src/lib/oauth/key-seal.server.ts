@@ -64,7 +64,7 @@ async function dataKey(kek: Kek, kid: string): Promise<CryptoKey> {
 
 export type SealedPrivateKey = { sealed: string; iv: string; fingerprint: string };
 
-export async function sealPrivateJwk(kid: string, jwk: JsonWebKey, kek: Kek): Promise<SealedPrivateKey> {
+export async function sealPrivateJwk(kid: string, jwk: JsonWebKey & { kid?: string }, kek: Kek): Promise<SealedPrivateKey> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv, additionalData: enc.encode(LABEL + kid) },
