@@ -26,8 +26,6 @@ async function q(body: unknown): Promise<any> {
   return JSON.parse(text);
 }
 
-export { splitSql };
-
 const dryRun = process.argv.includes("--dry-run");
 const dir = join(import.meta.dir, "..", "db");
 const files = listMigrationFiles(dir);
