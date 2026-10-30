@@ -31,3 +31,11 @@
 - [x] RLS-audit gedraaid: 79 tabellen RLS aan, 77 zonder policies, rout_app omzeilt RLS (beslissing gebruiker nodig)
 - [ ] Bestanden en media toont in workspace nog persoonlijk quotum (0/500 MB)
 - [ ] Links/statistieken/instellingen per scope (Studio toont persoonlijk profiel in workspace)
+
+## RFC-001 Blueprint (wacht op goedkeuring Lead Architect)
+- [x] Blauwdruk geschreven (SSOT, IdP, Identity Graph) — /mnt/documents/ROUT-Architectural-Blueprint.md
+- [ ] Fase 0: migratievolgorde numeriek, signing key versleutelen + roteren, onbekende kid weigeren
+- [ ] Fase 1: SSOT-opruiming, runtime-DDL bevriezen, schema-snapshot in CI
+- [ ] Fase 2: identity_links + e-mail-automerge uit
+- [ ] Fase 3: IdP-uitbreidingen (pairwise sub, refresh/revoke/introspect, end-session)
+- [ ] Fase 4: Namespace Matrix + reserved brands, DNS-handle + badge, passkey-first login, Data Vault export/hard delete, context-menu, /studio/account vs /studio/w/$slug/settings
