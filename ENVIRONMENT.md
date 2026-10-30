@@ -4,7 +4,7 @@
 
 1. Import the GitHub repo in Vercel. Framework preset: **Other**. Build command: `vite build` (default `bun run build` works). Output: leave empty — the build writes `.vercel/output` itself (Vercel server preset is selected automatically when `VERCEL` is set).
 2. Paste every variable from *Required on Vercel* below, plus the optional groups you use, in Vercel → Settings → Environment Variables (Production and Preview).
-3. Before each release with new `db/NN_*.sql` files, run once from your machine: `MIGRATION_URL=<owner url> bun scripts/migrate.ts`.
+3. Before each release with new `db/NNNN_*.sql` files, run once from your machine: `MIGRATION_URL=<owner url> bun scripts/migrate.ts`, then `bun run db:check` (schema drift against `db/schema.snapshot.json`).
 4. Point each OAuth provider's callback to `<BETTER_AUTH_URL>/api/auth/callback/<provider>`.
 5. Cron jobs call `/api/public/cron/*` with the `LOVABLE_CRON_SECRET` bearer token.
 
@@ -136,6 +136,9 @@ Optional. Defaults to <BETTER_AUTH_URL>/api/auth/callback/gitlab (e.g. https://r
 
 ## OAUTH_CLIENT_SECRET_PEPPER
 Optional, server-only, 32+ random characters. Pepper for "Login met ROUT" client-secret hashes. Falls back to the auth secret. Changing it invalidates every app secret created since (rotate them in the console).
+
+## ROUT_PROVIDER_SIGNING_KEK
+Server-only, 32+ random characters, identical on every deployment that shares the database (Vercel Production + Preview and the Lovable preview). Key-encryption key for the "Login met ROUT" signing keys: each private key is stored AES-256-GCM sealed with a per-key key derived via HMAC from this value. Without it a KEK is derived from the auth secret (with a warning). Changing it makes the next signature rotate to a new key automatically; tokens from the old key stay valid for 48 hours. After every deployment runs the sealed-key code, run `bun scripts/seal-signing-keys.ts` once to replace the legacy plaintext key.
 
 ## SMS_PROVIDER
 Optional: `android-gateway` (default), `twilio` or `brevo`. Without the keys below, phone verification shows "not configured" and sends nothing.

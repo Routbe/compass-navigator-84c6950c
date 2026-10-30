@@ -15,7 +15,11 @@
     "db:migrate": "bun ./scripts/migrate.ts",
     "db:migrate:dry": "bun ./scripts/migrate.ts --dry-run",
     "audit:brevo": "bun scripts/audit-brevo-templates.ts",
-    "docs:brevo": "bun scripts/audit-brevo-templates.ts --write"
+    "docs:brevo": "bun scripts/audit-brevo-templates.ts --write",
+    "db:migrate:gateway": "bun ./scripts/migrate-gateway.ts",
+    "db:snapshot": "bun ./scripts/schema-snapshot.ts",
+    "db:check": "bun ./scripts/schema-snapshot.ts --check",
+    "db:types": "bun ./scripts/schema-snapshot.ts --types"
   },
   "overrides": {
     "rolldown": "1.2.1"
