@@ -29,6 +29,10 @@ async function q(body: unknown): Promise<any> {
 const dryRun = process.argv.includes("--dry-run");
 const dir = join(import.meta.dir, "..", "db");
 const files = listMigrationFiles(dir);
+await q({
+  query: "create table if not exists public.schema_migrations (filename text primary key, checksum text not null, applied_at timestamptz not null default now())",
+  params: [],
+});
 const applied = (await q({ query: "select filename, checksum from public.schema_migrations", params: [] })).rows as {
   filename: string;
   checksum: string;
