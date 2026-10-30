@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 // A free workspace has 0 MB: the upload must be refused with the quota message,
 // even when file storage itself is not configured (no "storage not set up" instead).
 vi.mock("@/lib/neon", () => ({ sql: vi.fn(async () => []) }));
-vi.mock("@/lib/db/schema-ensure.server", () => ({ runSchemaEnsure: vi.fn(async () => undefined) }));
 vi.mock("@/lib/entitlement-engine.server", () => ({
   checkActiveScopeUpload: vi.fn(async () => ({ ok: false, status: 403, error: "Storage Quota Exceeded" })),
 }));

@@ -24,7 +24,6 @@ vi.mock("@/lib/neon", () => ({
     return Promise.resolve([]);
   },
 }));
-vi.mock("@/lib/db/schema-ensure.server", () => ({ runSchemaEnsure: async () => {} }));
 
 process.env["ALTCHA_HMAC_KEY"] = "test-key-test-key-test-key";
 const { createAltchaChallenge, verifyAltcha } = await import("@/lib/altcha.server");

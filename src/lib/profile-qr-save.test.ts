@@ -10,7 +10,6 @@ const { state, sql } = vi.hoisted(() => {
   return { state, sql: tag };
 });
 vi.mock("@/lib/neon", () => ({ sql }));
-vi.mock("@/lib/db/schema-ensure.server", () => ({ runSchemaEnsure: async () => undefined }));
 import { savePublishedProfileQr } from "./profile-drafts.server";
 
 describe("standalone profile QR save", () => {
